@@ -12,7 +12,7 @@
   "dependencies": {
     "@ocai/rune-core": "workspace:*",
     "@ocai/rune-react": "workspace:*",
-    "@vercel/analytics": "^1.4.0",
+    "@vercel/analytics": "^2.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
