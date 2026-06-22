@@ -1,0 +1,21 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* shadcn default base layer — borders use the semantic --border token,
+   body adopts background/foreground from the active theme, html picks
+   up Geist via --font-sans. */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}

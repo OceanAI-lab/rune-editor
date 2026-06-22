@@ -1,0 +1,44 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* Inline mark typography. Heading block typography has moved to
+   blocks/heading.css alongside the heading block's other visual
+   decisions; this file now scopes only the link mark (<a>) and
+   underline mark (<u>) since they share the same text-decoration
+   metrics. */
+
+/* Link mark. Tiptap's Link extension renders bare <a href>; the editor
+   uses cursor:text everywhere, so <a> needs to opt back into pointer.
+   `color: inherit` lets the user's inline text-color flow through —
+   kit.ts drops Link's mark priority below TextStyle so the DOM is
+   `<span data-text-color><a>...</a></span>` and inherit picks up the
+   span's color (#88). #76 */
+.rune-editor a {
+  color: inherit;
+  cursor: pointer;
+}
+
+.rune-editor ::selection {
+  background: var(--rune-text-selection-bg);
+}
+
+.rune-editor ::-moz-selection {
+  background: var(--rune-text-selection-bg);
+}
+
+/* Shared underline styling for the link mark (<a>) and the underline
+   mark (<u> from StarterKit). `text-decoration-color: currentColor`
+   makes the line track whatever color the surrounding text has —
+   combined with `color: inherit` on <a>, both glyph and underline
+   follow the user's text-color choice. Thickness/offset live on
+   tokens in rune-tokens.css so changing the affordance updates both
+   consumers. */
+.rune-editor :is(a, u) {
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-decoration-thickness: var(--rune-underline-thickness);
+  text-underline-offset: var(--rune-underline-offset);
+}

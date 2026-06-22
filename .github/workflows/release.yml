@@ -1,0 +1,48 @@
+name: Release
+
+# Versions are bumped in the private dev repo; the mirror lands an already-
+# versioned snapshot tagged v<version>. This job just publishes those versions
+# to npm. `changeset publish` only pushes packages whose package.json version
+# isn't already on the registry, so re-runs are safe.
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm provenance
+    steps:
+      # Third-party actions are pinned to a commit SHA (not a mutable major
+      # tag) — this job holds NPM_TOKEN, so a moved tag must not be able to
+      # swap in new code. Bump the SHA + comment together when updating.
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm -r build
+
+      - name: Publish
+        run: pnpm exec changeset publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"

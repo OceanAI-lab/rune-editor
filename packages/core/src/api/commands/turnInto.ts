@@ -1,0 +1,169 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) 2026 Ocean AI, LLC
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+import type { Editor } from "@tiptap/core"
+import type { Node as ProseMirrorNode, Schema } from "@tiptap/pm/model"
+import { Selection, type Transaction } from "@tiptap/pm/state"
+import {
+  resolveBodyBlockById,
+  surfaceChildrenAt,
+} from "../../schema/bodySurface"
+import { insertWouldNestColumnLayout } from "./insertBlocks"
+import type { TurnIntoTarget, TurnIntoBlockInput } from "../types"
+import { classifyKind, getAdapter } from "./turnIntoAdapters"
+
+export interface TurnIntoSource {
+  pos: number
+  node: ProseMirrorNode
+}
+
+export function resolveTurnIntoSources(
+  doc: ProseMirrorNode,
+  target: TurnIntoTarget,
+): TurnIntoSource[] {
+  // Single id / id list: each block is resolved by the recursive resolver, so
+  // a column child turns-into exactly like a root block (resolver-only path).
+  if (typeof target === "string") {
+    const resolved = resolveBodyBlockById(doc, target)
+    return resolved ? [{ pos: resolved.pos, node: resolved.node }] : []
+  }
+
+  if (Array.isArray(target)) {
+    const uniqueIds = [...new Set(target)]
+    const sources = uniqueIds.map((id) => resolveBodyBlockById(doc, id))
+    if (sources.length === 0 || sources.some((s) => s == null)) return []
+    return sources
+      .map((s) => ({ pos: s!.pos, node: s!.node }))
+      .sort((a, b) => a.pos - b.pos)
+  }
+
+  // Range target: both endpoints must share a surface (single-surface
+  // contract — cross-surface ranges are rejected). Walk that surface's blocks
+  // between the two endpoints inclusive.
+  const fromBlock = resolveBodyBlockById(doc, target.from)
+  const toBlock = resolveBodyBlockById(doc, target.to)
+  if (!fromBlock || !toBlock) return []
+  if (fromBlock.surfacePos !== toBlock.surfacePos) return []
+
+  const surface = surfaceChildrenAt(doc, fromBlock.pos)
+  if (!surface) return []
+  const lo = Math.min(fromBlock.pos, toBlock.pos)
+  const hi = Math.max(fromBlock.pos, toBlock.pos)
+  const sources: TurnIntoSource[] = []
+  let offset = surface.start
+  surface.node.forEach((node) => {
+    const pos = offset
+    offset += node.nodeSize
+    if (pos < lo || pos > hi) return
+    sources.push({ pos, node })
+  })
+  return sources
+}
+
+export function canTurnInto(
+  sourceNode: ProseMirrorNode,
+  target: TurnIntoBlockInput,
+  schema: Schema,
+): boolean {
+  if (!schema.nodes[target.type]) return false
+  // Container SOURCES (table, columnLayout — any structured-content block)
+  // cannot convert: their content is rows/columns, not inline text, so no
+  // textblock/atom target can absorb it. Classified structurally, not by
+  // name — the old `=== "table"` check let `columnLayout` through and
+  // persisted a schema-invalid doc (COL-2).
+  if (classifyKind(sourceNode.type) === "container") return false
+  return true
+}
+
+export interface ApplyTurnIntoOptions {
+  keepDepth?: boolean
+}
+
+export interface ApplyTurnIntoResult {
+  accepted: number
+  rejected: number
+}
+
+export function applyTurnIntoTr(
+  editor: Editor,
+  tr: Transaction,
+  sources: TurnIntoSource[],
+  target: TurnIntoBlockInput,
+  schema: Schema,
+  options: ApplyTurnIntoOptions = {},
+): ApplyTurnIntoResult {
+  const keepDepth = options.keepDepth ?? true
+  let accepted = 0
+  let rejected = 0
+  let firstAcceptedPos: number | null = null
+
+  for (const source of sources) {
+    const currentPos = tr.mapping.map(source.pos)
+    const currentNode = tr.doc.nodeAt(currentPos)
+    if (!currentNode || currentNode.attrs.id !== source.node.attrs.id) {
+      rejected++
+      continue
+    }
+
+    if (!canTurnInto(currentNode, target, schema)) {
+      rejected++
+      continue
+    }
+
+    // No-nesting guard (same rule as the insert leg): a `columnLayout`
+    // target for a source that already sits inside a column must refuse —
+    // the replace would nest a layout, which normalization then flattens
+    // into stray paragraphs.
+    if (
+      target.type === "columnLayout" &&
+      insertWouldNestColumnLayout(tr.doc, currentPos, [{ type: "columnLayout" }])
+    ) {
+      rejected++
+      continue
+    }
+
+    const targetType = schema.nodes[target.type]!
+    const adapter = getAdapter(
+      classifyKind(currentNode.type),
+      classifyKind(targetType),
+      currentNode.type.name,
+      target.type,
+    )
+    const result = adapter(editor, currentNode, target, schema)
+    if (!result) {
+      rejected++
+      continue
+    }
+    const sourceDepth =
+      typeof source.node.attrs.depth === "number" ? source.node.attrs.depth : 0
+    const attrs = {
+      ...result.node.attrs,
+      id: source.node.attrs.id,
+      depth: keepDepth ? sourceDepth : 0,
+    }
+
+    if (result.attrsOnly) {
+      for (const [key, value] of Object.entries(attrs)) {
+        if (currentNode.attrs[key] !== value) {
+          tr.setNodeAttribute(currentPos, key, value)
+        }
+      }
+    } else {
+      const node = targetType.create(attrs, result.node.content, result.node.marks)
+      tr.replaceWith(currentPos, currentPos + currentNode.nodeSize, node)
+    }
+
+    result.postProcess?.(tr, currentPos)
+    accepted++
+    if (firstAcceptedPos === null) firstAcceptedPos = currentPos
+  }
+
+  if (firstAcceptedPos !== null) {
+    tr.setSelection(Selection.near(tr.doc.resolve(firstAcceptedPos + 1)))
+  }
+
+  return { accepted, rejected }
+}

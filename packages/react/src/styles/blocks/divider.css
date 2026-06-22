@@ -1,0 +1,23 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* Divider atom: .rune-block provides rhythm and the click/drag region. */
+.rune-editor .rune-block:has(> hr) {
+  --rune-side-menu-top: 50%;
+  --rune-side-menu-transform: translateY(-50%);
+}
+
+.rune-editor .rune-block > hr {
+  border: none;
+  height: 1px;
+  margin: 0;
+  background: var(--rune-divider-color);
+}
+
+.rune-editor .rune-block.ProseMirror-selectednode:has(> hr) {
+  background-color: var(--rune-block-selected-bg);
+  border-radius: var(--radius-sm);
+}

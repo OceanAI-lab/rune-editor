@@ -1,0 +1,138 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* PM-rendered mark DOM uses plain CSS (no Tailwind) and reads tokens
+   from `.rune-editor`. Every literal here is a token so downstream apps
+   can re-skin the wiki link (swap the page icon for a brand mark, hide
+   it per-link via inline CSS var when the title already carries an
+   emoji, retune the underline, etc.) without touching this file. */
+.rune-editor .rune-wikilink {
+  color: inherit;
+  cursor: pointer;
+  padding-inline-end: var(--rune-wikilink-end-padding);
+  font-weight: var(--rune-wikilink-font-weight);
+  text-decoration: underline;
+  text-decoration-thickness: var(--rune-wikilink-underline-thickness);
+  text-decoration-color: var(--rune-wikilink-underline);
+  text-underline-offset: var(--rune-wikilink-underline-offset);
+}
+
+.rune-editor .rune-wikilink::before {
+  content: "";
+  display: var(--rune-wikilink-icon-display);
+  width: var(--rune-wikilink-icon-size);
+  height: var(--rune-wikilink-icon-size);
+  vertical-align: text-top;
+  margin-inline-end: var(--rune-wikilink-icon-gap);
+  background-color: var(--rune-wikilink-icon-fg);
+  mask-image: var(--rune-wikilink-icon-image);
+  -webkit-mask-image: var(--rune-wikilink-icon-image);
+  mask-size: contain;
+  -webkit-mask-size: contain;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+
+.rune-editor .rune-wikilink:hover {
+  text-decoration-color: currentColor;
+}
+
+.rune-editor .rune-wikilink[data-broken="true"] {
+  color: var(--rune-ref-broken-fg);
+  cursor: var(--rune-ref-broken-cursor);
+  text-decoration-line: var(--rune-ref-broken-decoration) underline;
+  text-decoration-color: var(--rune-ref-broken-fg);
+}
+
+.rune-editor .rune-wikilink:has([data-broken="true"]) {
+  color: var(--rune-ref-broken-fg);
+  cursor: var(--rune-ref-broken-cursor);
+  text-decoration-line: var(--rune-ref-broken-decoration) underline;
+  text-decoration-color: var(--rune-ref-broken-fg);
+}
+
+.rune-editor .rune-wikilink[data-broken="true"]::before,
+.rune-editor .rune-wikilink:has([data-broken="true"])::before {
+  background-color: var(--rune-ref-broken-fg);
+}
+
+.rune-editor .rune-wikilink:has([style*="--rune-wikilink-icon-image"])::before {
+  display: none;
+}
+
+.rune-editor .rune-wikilink [style*="--rune-wikilink-icon-image"]::before {
+  content: "";
+  display: var(--rune-wikilink-icon-display);
+  width: var(--rune-wikilink-icon-size);
+  height: var(--rune-wikilink-icon-size);
+  vertical-align: text-top;
+  margin-inline-end: var(--rune-wikilink-icon-gap);
+  background-color: var(--rune-wikilink-icon-fg);
+  mask-image: var(--rune-wikilink-icon-image);
+  -webkit-mask-image: var(--rune-wikilink-icon-image);
+  mask-size: contain;
+  -webkit-mask-size: contain;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+
+/* Broken + custom icon (Fallback C): when PM merges `data-broken` and the
+   icon-image style onto the same decoration child span, the override above
+   renders the icon via the child span's ::before — which inherits the
+   regular --rune-wikilink-icon-fg. Without this rule the icon would stay
+   the non-broken color while the underline/text properly dim. */
+.rune-editor .rune-wikilink [data-broken="true"][style*="--rune-wikilink-icon-image"]::before {
+  background-color: var(--rune-ref-broken-fg);
+}
+
+/* Glyph / emoji variant — parallel to the icon-image path above but uses
+   CSS `content` so the glyph renders in its native color (full-color
+   emoji, not a mono mask). `iconText` from `resolve()` lands as
+   `--rune-wikilink-icon-text: '<glyph>'`; `renderAttrs` can also set it on
+   the outer <a>. Mirrors the image variant's two surfaces (outer <a> +
+   inner decoration span) and hide-parent rule. */
+.rune-editor .rune-wikilink[style*="--rune-wikilink-icon-text"]::before {
+  content: var(--rune-wikilink-icon-text, "");
+  display: var(--rune-wikilink-icon-display);
+  margin-inline-end: var(--rune-wikilink-icon-gap);
+  vertical-align: text-bottom;
+  font-size: var(--rune-wikilink-icon-size);
+  line-height: 1;
+  /* Unset mask-path properties so the glyph renders natively, not as a
+     silhouette of itself. */
+  width: auto;
+  height: auto;
+  background-color: transparent;
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+.rune-editor .rune-wikilink:has([style*="--rune-wikilink-icon-text"])::before {
+  display: none;
+}
+
+.rune-editor .rune-wikilink [style*="--rune-wikilink-icon-text"]::before {
+  content: var(--rune-wikilink-icon-text, "");
+  display: var(--rune-wikilink-icon-display);
+  margin-inline-end: var(--rune-wikilink-icon-gap);
+  vertical-align: text-bottom;
+  font-size: var(--rune-wikilink-icon-size);
+  line-height: 1;
+  width: auto;
+  height: auto;
+  background-color: transparent;
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+/* Broken + glyph: can't recolor a multi-color emoji via background-color,
+   so we visually dim via opacity + grayscale. Matches the muted feel of
+   the broken text/underline without destroying the glyph identity. */
+.rune-editor .rune-wikilink[data-broken="true"][style*="--rune-wikilink-icon-text"]::before,
+.rune-editor .rune-wikilink [data-broken="true"][style*="--rune-wikilink-icon-text"]::before {
+  opacity: 0.55;
+  filter: grayscale(1);
+}

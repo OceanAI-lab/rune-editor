@@ -1,0 +1,80 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* Editor shell + per-block layout contract.
+
+   .ProseMirror has no inline padding: blocks must extend to its left
+   edge so probe points inside the gutter hot zone (clamped to
+   editorRect.left+1 by SideMenu.compute) resolve into a block via
+   posAtCoords. An inner px-* would create a dead strip where
+   posAtCoords returns null and hover drops.
+
+   Every top-level block is its own positioning context so
+   .rune-side-menu (position: absolute; left: -58px) anchors to the
+   block, not an outer ancestor. `> *` (not a specific tag set) so new
+   block types pick this up automatically. Vertical rhythm via padding,
+   not margin: margin would leave Y gaps where mouse enters "no block"
+   and posAtCoords returns null, killing hover. --block-pad-top is the
+   contract side-menu's `top` reads to align with the first text line. */
+
+/* Scoped to direct child of .rune-editor so this rule does NOT match
+   .ProseMirror clones nested inside .rune-block-drag-preview (whose
+   ancestry is .rune-editor > .rune-block-drag-preview > .ProseMirror,
+   not a direct child). The drag preview wrapper sizes itself to the
+   source block; it must not inherit the editor canvas's min-height /
+   background / full-width fill. */
+.rune-editor > .ProseMirror {
+  @apply min-h-40 w-full bg-background text-foreground outline-none;
+  /* Pin the caret to the editor's default fg. Without this declaration
+     `caret-color` defaults to `auto`, which follows `currentColor` —
+     so a side-menu text-color or bg-color choice would tint the caret
+     along with the text via the cascade. Notion does the same (their
+     contenteditable carries `caret-color: var(--c-texPri)`). */
+  caret-color: var(--rune-editor-fg);
+}
+
+/* Scroll room below the last block so cursor-anchored popovers (slash
+   menu, color sub-popover, link panel — anything opening BELOW the
+   caret) have room to render near the bottom of a tall document. Pairs
+   with the CaretComfort extension, which scrolls the page on click;
+   this padding is what gets nudged into.
+
+   Lives on .rune-editor (the EditorContent wrapper), not inside
+   .ProseMirror — putting it on .ProseMirror visually extends the
+   contenteditable past the last block. .rune-editor is non-contenteditable
+   chrome that owns this layout territory; clicks in this region bubble
+   up to the TailClick listener (also on .rune-editor) which appends a
+   paragraph + dispatches a TextSelection (clearing any active MBS). */
+.rune-editor {
+  padding-bottom: 30vh;
+}
+
+/* Body-block base rhythm + positioning context, on BOTH body surfaces: the
+   root (.ProseMirror direct children) and a column's interior (.rune-column
+   direct children — a flat body surface of its own, columns Phase 2). One
+   selector keeps the two surfaces from drifting; per-block --block-pad-top
+   overrides (heading/toggle/image/media) use the same :is() so the side-menu
+   grip contract (invariant 8) holds inside columns too. `:is()` carries the
+   specificity of its most specific argument — one class, same as the bare
+   `.ProseMirror` — so root output is unchanged. */
+.rune-editor :is(.ProseMirror, .rune-column) > .rune-block {
+  position: relative;
+  --block-pad-top: 3px;
+  padding-top: var(--block-pad-top);
+  padding-bottom: 3px;
+  padding-inline: 2px;
+}
+
+/* Per-depth left padding driven by the inline `--rune-block-depth`
+   custom property the schema emits on any block with depth>0 (see
+   createSpec.ts — depth.renderHTML). Margin would break the
+   block-touches-block invariant the side-menu hover relies on, so we
+   use padding. One rule handles arbitrary depth — no per-N enumeration
+   and no reliance on `attr(name type(<number>))`, which still lacks
+   Safari/Firefox support. */
+.rune-editor .rune-block[data-depth] {
+  padding-inline-start: calc(var(--rune-block-depth, 0) * var(--rune-block-indent-step));
+}

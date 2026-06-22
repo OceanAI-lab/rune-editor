@@ -1,0 +1,31 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* M8.4b — blockquote: left rule + padding. <blockquote> sits inside
+ * .rune-block-content; the default .rune-block padding-top supplies
+ * vertical rhythm, so no --block-pad-top override is needed.
+ *
+ * Left rule uses `currentColor` (NOT --foreground) so the bar tracks
+ * the text color set via the side-menu palette. data-text-color rides
+ * on .rune-block-content and `color` cascades into the blockquote;
+ * the border then picks up the same value. With no text-color set,
+ * currentColor resolves to the editor body fg via the cascade. */
+.rune-editor blockquote {
+  border-left: 3px solid currentColor;
+  padding-left: 14px;
+  font-size: 1.05em;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Block-color pill — see blocks/heading.css for the rationale; reads
+   the shared --block-content-* tokens. The blockquote's own left rule
+   sits inside the pill, so the rule visually shifts in by the pill's
+   padding when a bg color is picked. */
+.rune-editor .rune-block:has(> .rune-block-content > blockquote) > .rune-block-content {
+  padding-inline: var(--block-content-pad-x);
+  border-radius: var(--block-content-radius);
+}

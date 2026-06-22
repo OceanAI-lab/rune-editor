@@ -1,0 +1,33 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* `.rune-chrome` — the editor-grade floating-panel "shadow box" for hosts NOT
+   on rune's Tailwind theme. One className + importing this stylesheet gives the
+   rune popover look with no Tailwind utility resolution and no dependency on
+   `bg-popover`/`shadow-md` existing. Tailwind hosts use RUNE_CHROME_CLASS
+   instead (runeChromeClass.ts) — the two are an either/or, documented as such.
+
+   Static box only: rounded corners, popover bg/fg, hairline ring + drop shadow.
+   Open/close animation is the popover library's job (Radix data-state), not
+   this class's. All values come from the --rune-chrome-* tokens on :root
+   (shadcn-tokens.css), so a reskin of --popover / --radius / --foreground flows
+   through, and a portaled panel outside `.rune-editor` still resolves them. */
+.rune-chrome {
+  border-radius: var(--rune-chrome-radius);
+  background: var(--rune-chrome-bg);
+  color: var(--rune-chrome-fg);
+  box-shadow:
+    0 0 0 1px var(--rune-chrome-ring),
+    var(--rune-chrome-shadow);
+}
+
+/* Heavier shadow for a panel floating over content (hover-card weight) — the
+   non-Tailwind counterpart of runeChromeClass({ shadow: "lg" }). */
+.rune-chrome--strong {
+  box-shadow:
+    0 0 0 1px var(--rune-chrome-ring),
+    var(--rune-chrome-shadow-strong);
+}

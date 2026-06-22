@@ -1,0 +1,790 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* M8.4e-a — table block. Plain CSS, scoped to .rune-editor.
+ * Cell substructure (tableRow/tableCell/tableHeader/tableParagraph)
+ * is rendered by per-node renderHTML in core; this file only styles
+ * the table chrome (border, padding, header bg) and aligns the
+ * side-menu drag handle. */
+
+.rune-editor {
+  /* Map to shadcn surface tokens so the table picks up the host theme
+   * (light/dark, custom palettes) instead of pinning to hard-coded grays.
+   *
+   * NOT `var(--border)` directly: in dark mode shadcn's --border is
+   * translucent (`oklch(1 0 0 / 10%)`). Combined with `border-collapse:
+   * collapse`, browsers double-paint at T-junctions and grid corners
+   * where two cell borders meet — the alpha stacks and the intersection
+   * pixels render visibly brighter than the surrounding edges (most
+   * obvious on a dense grid against a dark canvas). Pre-flattening the
+   * alpha into an opaque mix removes the stacking surface, so each line
+   * paints once at uniform intensity. 10% foreground mirrors the dark
+   * theme's intent and reads close to the light theme's opaque
+   * `oklch(0.922 0 0)` against white. Same pattern as
+   * `--rune-table-header-bg` below. */
+  --rune-table-border: color-mix(in oklab, var(--foreground) 10%, var(--background));
+  /* th background tint — shadcn --muted is too contrasted in dark mode
+   * (~27% fg over bg). Notion's --cd-tabHeaRowColBac sits at ~3–5% in
+   * both modes; pick 5% so the header reads as "slightly heavier than
+   * body bg" without dominating in dark. */
+  --rune-table-header-bg: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --rune-table-cell-pad-x: 9px;
+  --rune-table-cell-pad-y: 7px;
+  /* Cell typography. Tables read as "data dense" rather than "body
+   * paragraph"; matches Notion's 14/20 inside cells. Without these,
+   * cells inherit editor body 16/24 and rows feel ~30% taller than
+   * Notion at the same row count. */
+  --rune-table-cell-font-size:   14px;
+  --rune-table-cell-line-height: 20px;
+  /* Floor for empty cells so an empty row isn't shorter than a populated
+   * one. 32px = inner content area; matches Notion's th/td min-height. */
+  --rune-table-cell-min-height: 32px;
+  --rune-sel-border-width: 2px;
+  --rune-sel-border-radius: 2px;
+
+  /* c2: spacing/bleed for table chrome (pills, extend buttons, indicator,
+   * preview). See spec 2026-05-05-m8-4e-c2-table-chrome-redesign.md.
+   *
+   * --rune-table-bleed-left: covers TWO things that extend left of the table:
+   *   1) row pill at -3px (trivial — could fit in 20px)
+   *   2) side-menu widget at left:-58px from <td> (positioned ancestor is the
+   *      cell, since cells set position:relative for column-resize handles).
+   *      Side-menu width ≈ 40px (add + grip buttons), so leftmost extent
+   *      is -58px. With grip half-clipped at 20px bleed, we need ≥ 64px to
+   *      keep the whole grip inside .rune-table-scroll's clip rect. */
+  --rune-table-chrome-pad-top:    8px;
+  --rune-table-chrome-pad-right:  24px;
+  --rune-table-chrome-pad-bottom: 24px;
+  --rune-table-bleed-left:    72px;
+  /* --rune-table-bleed-right: lets the scroll viewport extend past the
+   * content column's right edge into the page gutter, so wide tables don't
+   * get visually clipped at the column boundary. Mirrors Notion's pattern
+   * (JS-set padding-right ~96px on the inner scroll content) but done as a
+   * CSS-only bleed via negative margin + reclaimed padding, matching the
+   * existing left-bleed mechanic. The host page must have overflow:visible
+   * outside the content column for the bleed to render — playground does
+   * (.playground-page-body-row { overflow: visible }). */
+  --rune-table-bleed-right:   96px;
+
+  /* z-index scale for table chrome.
+   *   resize:    PM column-resize handle, lives inside each cell.
+   *   indicator: drop indicator, frame-mounted (position:absolute).
+   *   cell-handle: pills + extend buttons, frame-mounted.
+   *   float:     elements portaled to document.body with position:fixed
+   *              (e.g. cell-drag preview) — must clear any in-page stacking
+   *              context, including app-level fixed-position chrome. */
+  --rune-z-table-resize:    10;
+  --rune-z-table-indicator: 20;
+  --rune-z-cell-handle:     25;
+  --rune-z-float:           9999;
+}
+
+/* The gutter contract (CSS-only side-menu alignment, no JS measurement).
+ *
+ * Table owns its visual breathing room inside `.rune-table-chrome-padding`.
+ * The outer `.rune-block` must stay a clean positioning / hit-test shell;
+ * otherwise an indented table gets a misleading 15px top padding before the
+ * actual table component even starts.
+ *
+ * --rune-side-menu-top override: the SideMenu widget is placed via
+ * Decoration.widget at the start of the table's first content node,
+ * which lands inside .rune-table-frame (position:relative) rather than
+ * .rune-block. Because .rune-table-frame is the nearest positioned
+ * ancestor, `top: --block-pad-top` would resolve against the frame —
+ * not the block — putting the grip far below the cell text.
+ *
+ * Formula: the header's first TEXT LINE starts at border (1px) +
+ * cell-pad-y from the frame top and is cell-line-height tall, so its
+ * center sits at 1px + cell-pad-y + line-height/2 (= 18px with the
+ * current tokens). The side menu is 1.5em tall, so top = that center −
+ * 0.75em puts the grip's center exactly on the header line's center —
+ * the em cancels out of the algebra, so the widget's inherited
+ * font-size never matters. (The previous formula centered the grip on
+ * the cell text's TOP edge — cell-pad-y from frame top — which read as
+ * floating ~11px above the header row.) No JS measurement. */
+.rune-editor .rune-block[data-block-type="table"] {
+  --block-pad-top: 0px;
+  --rune-side-menu-top: calc(
+    1px + var(--rune-table-cell-pad-y) + var(--rune-table-cell-line-height) / 2 - 0.75em
+  );
+  /* Table's widget is positioned against .rune-table-frame, which already
+   * sits at the block's depth-shifted content column. Do not add
+   * depth*indent again or indented tables push the grip into the first cell. */
+  --rune-side-menu-left: calc(var(--rune-side-menu-grip-offset) - 30px);
+  padding-block: 0;
+}
+
+/* Match the inline padding of paragraph / heading / list / blockquote so
+ * the table's visible left/right edges line up with their text edges.
+ * Opts INTO the alignment padding only — no border-radius (table has no
+ * bg-color pill; cell-level bg-color paints inside cells via the
+ * `.rune-table td[data-background-color]` rules below). */
+.rune-editor .rune-block[data-block-type="table"] > .rune-block-content {
+  padding-inline: var(--block-content-pad-x);
+}
+
+/* MBS highlight scope: the default block-selection rule paints a halo via
+   .rune-block::before (block-selection.css), which for a table extends out
+   to chrome-padding around the actual <table>. Visually
+   the highlight should clamp to the table's geometry, not the block's
+   padding box. Suppress the wrapper halo entirely for tables and re-apply
+   the fill on .rune-table-frame (the element that visually owns the
+   table's outer edges). display:none on the always-rendered ::before is
+   safe — tables never need the Notion-style 4px-gap pill effect because
+   they don't sit edge-to-edge with sibling blocks the way paragraphs do. */
+.rune-editor .rune-block[data-block-type="table"]::before {
+  display: none;
+}
+/* Overlay the tint on top of cells (incl. <th> with its own background)
+   via a pseudo-element on .rune-table-frame; painting on the frame's
+   background-color gets occluded by header/cell backgrounds. The frame
+   already has position: relative, so absolute positioning anchors here.
+   No border-radius — match the table's square edges. */
+.rune-editor .rune-block[data-block-type="table"][data-block-selected="true"] .rune-table-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--rune-block-selected-bg);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.rune-editor .rune-table-scroll {
+  overflow-x: auto;
+  /* Hide the horizontal scrollbar across platforms. macOS overlay
+   * scrollbars already hide on idle, but Windows / Linux / users with
+   * "always show scrollbars" enabled would otherwise see a persistent
+   * track bar — Notion's table block hides it the same way. Scrolling
+   * still works (wheel, trackpad, click+drag inside the table). */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  /* Bleed: pull the scroll element left/right of its parent (negative
+   * margin) and reclaim the same distance as inline padding INSIDE the
+   * scroll element. The padding extends the clip rect (overflow:auto
+   * clips at padding box, not content box), so children at content-x:-3px
+   * (row pill) land at scroll-element-x:69px — well inside the clip rect.
+   *
+   * Width quirk: with the default `box-sizing: content-box`, the inline
+   * paddings would eat into the scroll element's content area (708 - 72
+   * - 96 = 540), and `width: 100%` children (e.g. fit-to-width tables)
+   * would shrink to 540 instead of filling the editor's 708 content
+   * column. We set `box-sizing: border-box` and widen the box by the
+   * bleed totals so:
+   *   box-width  = 100% + bleed-left + bleed-right
+   *   padding    = bleed-left + bleed-right (absorbed by border-box)
+   *   content-w  = 100% (= editor content column)
+   * This also makes `.rune-table-content`'s max-content sizing chain
+   * (chrome-padding → frame → table) measure against the full editor
+   * width, so a wide table's +col extend button lands at the table's
+   * actual right border instead of the scroll viewport's right edge.
+   *
+   * Drag-preview override: the block-drag extension cloneNode(true)s
+   * .rune-block. Force overflow:visible inside the cloned preview so a
+   * wide table doesn't show a scrollbar; reset the bleed margin so the
+   * preview's left edge aligns with the original block. */
+  box-sizing: border-box;
+  width: calc(100% + var(--rune-table-bleed-left) + var(--rune-table-bleed-right));
+  margin-inline-start:  calc(-1 * var(--rune-table-bleed-left));
+  padding-inline-start: var(--rune-table-bleed-left);
+  margin-inline-end:    calc(-1 * var(--rune-table-bleed-right));
+  padding-inline-end:   var(--rune-table-bleed-right);
+}
+.rune-editor .rune-table-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0 !important;
+  height: 0 !important;
+}
+.rune-block-drag-preview .rune-table-scroll {
+  overflow: visible;
+  width: 100%;
+  margin-inline-start: 0;
+  padding-inline-start: 0;
+  margin-inline-end: 0;
+  padding-inline-end: 0;
+}
+
+.rune-editor .rune-table-content {
+  width: max-content;
+}
+
+/* Each level of the wrapper chain shrinks to the table's actual width
+ * (max-content). This mirrors Notion's pattern — their inner table-block
+ * wrapper resolves to the table's natural content width regardless of
+ * how wide the parent column is, so the +col / +row extend buttons that
+ * are abs-positioned to this wrapper always anchor to the real table
+ * border. The previous setup (chrome-padding auto-block + table
+ * min-width: 100%) created a circular dependency that pinned the frame
+ * to scroll-viewport width, so the +col button stayed at the editor's
+ * right edge instead of following the actual table right edge when the
+ * table overflowed. */
+.rune-editor .rune-table-chrome-padding {
+  width: max-content;
+  padding-top:    var(--rune-table-chrome-pad-top);
+  padding-right:  var(--rune-table-chrome-pad-right);
+  padding-bottom: var(--rune-table-chrome-pad-bottom);
+}
+
+.rune-editor .rune-table-frame {
+  position: relative;
+  /* All table-owned chrome (extend buttons, drop indicator) mounts as
+   * direct children of this element. Pills remain PM widget decorations
+   * inside cells but visually sit inside the chrome padding provided by
+   * the parent. */
+  width: max-content;
+}
+
+.rune-editor .rune-table {
+  border-collapse: collapse;
+  width: max-content;
+  table-layout: fixed;
+}
+
+/* "Fit to width" is no longer a sticky mode — TableCommands.fitTableToWidth
+ * writes absolute pixel `colwidth`s in one shot, so the table is always a
+ * plain shrink-to-fit (max-content) table from the renderer's perspective.
+ * There is no `[data-fit-width="true"]` selector chain anymore. */
+
+/* `position: relative` is required so the columnResizing plugin's
+ * absolute-positioned `.column-resize-handle` (rendered inside each
+ * cell) anchors to the cell. */
+.rune-editor .rune-table td,
+.rune-editor .rune-table th {
+  border: 1px solid var(--rune-table-border);
+  padding: var(--rune-table-cell-pad-y) var(--rune-table-cell-pad-x);
+  vertical-align: top;
+  min-width: 35px;
+  min-height: var(--rune-table-cell-min-height);
+  font-size: var(--rune-table-cell-font-size);
+  line-height: var(--rune-table-cell-line-height);
+  position: relative;
+}
+
+.rune-editor .rune-table th {
+  background: var(--rune-table-header-bg);
+  font-weight: 600;
+  text-align: left;
+}
+
+/* Cell color from the pill drop-down (M8.4e-e). Specificity (0,3,1)
+ * beats the default header background `.rune-table th` at (0,2,1) and
+ * matches the flat palette rules for `<td>`. Tokens come from
+ * color-palette.css; this block only lifts specificity. */
+.rune-editor .rune-table td[data-background-color="gray"],
+.rune-editor .rune-table th[data-background-color="gray"]   { background-color: var(--rune-color-gray-bg); }
+.rune-editor .rune-table td[data-background-color="brown"],
+.rune-editor .rune-table th[data-background-color="brown"]  { background-color: var(--rune-color-brown-bg); }
+.rune-editor .rune-table td[data-background-color="orange"],
+.rune-editor .rune-table th[data-background-color="orange"] { background-color: var(--rune-color-orange-bg); }
+.rune-editor .rune-table td[data-background-color="yellow"],
+.rune-editor .rune-table th[data-background-color="yellow"] { background-color: var(--rune-color-yellow-bg); }
+.rune-editor .rune-table td[data-background-color="green"],
+.rune-editor .rune-table th[data-background-color="green"]  { background-color: var(--rune-color-green-bg); }
+.rune-editor .rune-table td[data-background-color="blue"],
+.rune-editor .rune-table th[data-background-color="blue"]   { background-color: var(--rune-color-blue-bg); }
+.rune-editor .rune-table td[data-background-color="purple"],
+.rune-editor .rune-table th[data-background-color="purple"] { background-color: var(--rune-color-purple-bg); }
+.rune-editor .rune-table td[data-background-color="pink"],
+.rune-editor .rune-table th[data-background-color="pink"]   { background-color: var(--rune-color-pink-bg); }
+.rune-editor .rune-table td[data-background-color="red"],
+.rune-editor .rune-table th[data-background-color="red"]    { background-color: var(--rune-color-red-bg); }
+
+/* Text-color rules. <th> already has font-weight:600 but no `color`
+ * override, so the flat palette rule would technically match. Mirror
+ * the bg pattern anyway for symmetry and to insulate against future
+ * `.rune-table th { color: ... }` additions. */
+.rune-editor .rune-table td[data-text-color="gray"],
+.rune-editor .rune-table th[data-text-color="gray"]   { color: var(--rune-color-gray-fg); }
+.rune-editor .rune-table td[data-text-color="brown"],
+.rune-editor .rune-table th[data-text-color="brown"]  { color: var(--rune-color-brown-fg); }
+.rune-editor .rune-table td[data-text-color="orange"],
+.rune-editor .rune-table th[data-text-color="orange"] { color: var(--rune-color-orange-fg); }
+.rune-editor .rune-table td[data-text-color="yellow"],
+.rune-editor .rune-table th[data-text-color="yellow"] { color: var(--rune-color-yellow-fg); }
+.rune-editor .rune-table td[data-text-color="green"],
+.rune-editor .rune-table th[data-text-color="green"]  { color: var(--rune-color-green-fg); }
+.rune-editor .rune-table td[data-text-color="blue"],
+.rune-editor .rune-table th[data-text-color="blue"]   { color: var(--rune-color-blue-fg); }
+.rune-editor .rune-table td[data-text-color="purple"],
+.rune-editor .rune-table th[data-text-color="purple"] { color: var(--rune-color-purple-fg); }
+.rune-editor .rune-table td[data-text-color="pink"],
+.rune-editor .rune-table th[data-text-color="pink"]   { color: var(--rune-color-pink-fg); }
+.rune-editor .rune-table td[data-text-color="red"],
+.rune-editor .rune-table th[data-text-color="red"]    { color: var(--rune-color-red-fg); }
+
+.rune-editor .rune-table p {
+  margin: 0;
+}
+
+/* prosemirror-tables' columnResizing plugin renders a resize handle
+ * inside each cell at its right edge (one widget per row). Since the
+ * widget is scoped to a single cell, `top: -1px; bottom: -1px` lets
+ * adjacent rows' handles overlap the shared horizontal border so the
+ * column boundary reads as one continuous vertical line instead of
+ * being chopped at each row.
+ *
+ * The same selector applies to handles inside both <th> and <td> — no
+ * cell-type-specific overrides — so th and td render identically.
+ *
+ * `right: -2px; width: 3px` (handle spans padding-box.right -1..+2) is
+ * tuned to overlap the cell-selection ::after on BOTH sides of the
+ * boundary: with `inset: -1px` on the accent, the LEFT cell's selected
+ * accent sits at padding-box.right -1..+1, while the RIGHT cell's
+ * accent (in left-cell coords, since the collapsed border occupies +0..+1)
+ * sits at +0..+2. Spanning -1..+2 covers both — without this, the
+ * handle was 1px off from the accent corner whenever the selection
+ * was on the right cell.
+ *
+ * Color matches --editor-accent (the cell-selection accent). No fade-in
+ * animation: prosemirror-tables remounts this widget each time its plugin
+ * state flips between hover and dragging, so any animation visibly
+ * re-fires on click. Proper fix tracked in #202. */
+.rune-editor .rune-table th .column-resize-handle,
+.rune-editor .rune-table td .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: -1px;
+  bottom: -1px;
+  width: 3px;
+  z-index: var(--rune-z-table-resize);
+  background: var(--editor-accent);
+  pointer-events: none;
+}
+
+/* `resize-cursor` class is set on the editor root by the
+ * columnResizing plugin while the user is hovering a handle. */
+.rune-editor .ProseMirror.resize-cursor,
+.rune-editor.ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+
+/* `.rune-dragging` is added to view.dom by both TableMouseSelection (on
+ * cross-cell mousemove during a CellSelection drag, cleared on mouseup)
+ * and CellHandleDrag (during a pill-initiated col/row drag). Hide the
+ * column-resize handle for the duration of either drag so it doesn't
+ * flash under the cursor as the selection / drag preview moves.
+ *
+ * Pills and extend buttons are NOT hidden via this class — their
+ * suppression lives in Core (CellHandlePills returns null decorations,
+ * TableExtendButtons sets data-dragging on the buttons) so the gesture
+ * decision is owned by the same layer that holds gesture state. */
+.rune-editor .ProseMirror.rune-dragging .column-resize-handle {
+  display: none;
+}
+
+/* CellSelection / CursorCell accent borders.
+ *
+ * prosemirror-tables tags selected cells with `.selectedCell`. The
+ * `.cursorCell` class is Rune-defined and emitted exclusively by the
+ * CellSelectionEdges plugin (see CellSelectionEdges.ts). That same plugin
+ * also tags perimeter cells with `.sel-edge-{top,right,bottom,left}` so we
+ * can paint the rectangle's outer border without per-cell internal lines.
+ * The pseudo-element overlays the cell's collapsed 1px gray border
+ * (inset:-1px) so the 2px accent fully covers it. */
+.rune-editor .selectedCell::after,
+.rune-editor .cursorCell::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  box-sizing: border-box;
+  border: 0 solid var(--editor-accent);
+  pointer-events: none;
+}
+
+/* When a CellSelection is active, ProseMirror's DOM range still covers the
+ * text inside the cells, so the browser paints its native ::selection color
+ * over that text. Hide it so only the accent border shows. */
+.rune-editor table:has(.selectedCell) ::selection {
+  background: transparent;
+}
+.rune-editor table:has(.selectedCell) ::-moz-selection {
+  background: transparent;
+}
+
+.rune-editor .sel-edge-top::after    { border-top-width: var(--rune-sel-border-width); }
+.rune-editor .sel-edge-right::after  { border-right-width: var(--rune-sel-border-width); }
+.rune-editor .sel-edge-bottom::after { border-bottom-width: var(--rune-sel-border-width); }
+.rune-editor .sel-edge-left::after   { border-left-width: var(--rune-sel-border-width); }
+
+/* Corner cells carry both adjacent edge classes — round just that corner. */
+.rune-editor .sel-edge-top.sel-edge-left::after     { border-top-left-radius: var(--rune-sel-border-radius); }
+.rune-editor .sel-edge-top.sel-edge-right::after    { border-top-right-radius: var(--rune-sel-border-radius); }
+.rune-editor .sel-edge-bottom.sel-edge-left::after  { border-bottom-left-radius: var(--rune-sel-border-radius); }
+.rune-editor .sel-edge-bottom.sel-edge-right::after { border-bottom-right-radius: var(--rune-sel-border-radius); }
+
+/* Cursor-focus cell: all four sides + all four corners rounded. */
+.rune-editor .cursorCell::after {
+  border-width: var(--rune-sel-border-width);
+  border-radius: var(--rune-sel-border-radius);
+}
+
+/* === c2: cell handle pills, drag preview, drop indicator, extend buttons === */
+
+/* c2 tokens — scoped to .rune-editor to inherit theme context.
+ *
+ * Color recipe is derived from Notion's table chrome by reading their
+ * `--c-icoTer` / `--c-borPri` / page-bg tokens in both light and dark.
+ * Their fg-over-bg alpha ratio sits at ~42% for the pill family and ~5%
+ * for the th tint in both modes — so we express it as a `color-mix` of
+ * the shadcn --foreground over transparent, and the rune editor adapts
+ * automatically with the host's light/dark theme. (The earlier hardcoded
+ * oklch(0.34 ...) only looked right in light mode.)
+ *
+ * --rune-pill-bg:      pill fill. ~42% --foreground over transparent; this
+ *                      is the same color used as the grip's icon fill
+ *                      below — the unification trick that makes the
+ *                      "static pill → hover grip with dots" transition
+ *                      read as one component (Notion does the same:
+ *                      pill bg and grip dots both use --c-icoTer).
+ * --rune-pill-border:  2px border painted in the page background to punch
+ *                      a visual gap out of the cell selection border
+ *                      underneath the pill, so the two outlines don't merge.
+ * --rune-grip-bg:      inner grip chip fill. Uses --background so the
+ *                      chip reads as a "white-ish surface" against the
+ *                      th muted bg, in both themes. (Earlier --accent
+ *                      tinted it slightly; we drop that — Notion's grip
+ *                      bg is straight page bg and reads cleaner.)
+ * --rune-grip-border:  subtle 1px grip border. shadcn --border is ~13%
+ *                      fg over bg in both modes, which matches Notion's
+ *                      ~12–14% --c-borPri.
+ * --rune-grip-fg:      the ⋮⋮ icon color inside the grip — same recipe
+ *                      as pill-bg (the unification trick). Dropped the
+ *                      old `#fff` (which forced light-icon-on-light-chip
+ *                      and lost contrast). */
+.rune-editor {
+  /* pill-bg MUST be opaque, not alpha-blended with `transparent`. The pill
+   * sits inside a cell that may carry the cell-selection blue tint; an
+   * alpha pill bleeds the blue through and reads as bluish. Mixing with
+   * --background keeps the same gray over a default cell AND a selected
+   * cell. */
+  --rune-pill-bg: color-mix(in oklab, var(--foreground) 42%, var(--background));
+  --rune-pill-border: var(--background);
+  --rune-pill-border-radius: 4px;
+  --rune-grip-bg: var(--background);
+  --rune-grip-border: var(--border);
+  /* grip-fg can stay alpha — it paints SVG dots, and the grip's solid
+   * --background fill underneath isolates them from any cell tint. */
+  --rune-grip-fg: color-mix(in oklab, var(--foreground) 42%, transparent);
+}
+
+/* Cell handle pills — emitted by CellHandlePills (T1) as widget decorations
+ * inside the active row/column header cell. Parent th/td has
+ * `position: relative` (see above), so absolute positioning resolves against
+ * the cell box. Pointer-events: auto so hover/click targets the pill. */
+.rune-editor .rune-col-pill,
+.rune-editor .rune-row-pill {
+  position: absolute;
+  box-sizing: border-box;
+  background: var(--rune-pill-bg);
+  /* The 2px border (painted in the page background color) visually punches a
+   * gap between the pill and the selection-edge border drawn by ::after on the
+   * same cell, so the two outlines don't overlap/merge. */
+  border: var(--rune-sel-border-width) solid var(--rune-pill-border);
+  border-radius: var(--rune-pill-border-radius);
+  pointer-events: auto;
+  cursor: pointer;
+  display: block;
+  z-index: var(--rune-z-cell-handle);
+}
+
+/* Column pill — 18×6 total (including the 2px border on each side).
+ * Centered on the cell's top border: top = -(height/2) = -3px. */
+.rune-editor .rune-col-pill {
+  width: 18px;
+  height: 6px;
+  top: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Row pill — 6×18 total. Centered on the cell's left border: left = -3px. */
+.rune-editor .rune-row-pill {
+  width: 6px;
+  height: 18px;
+  left: -3px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Grip button — absolute-centered inside the pill. Hidden by default;
+ * fades in on pill hover (or stays visible when is-active). */
+.rune-editor .rune-col-pill-grip,
+.rune-editor .rune-row-pill-grip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  background: var(--rune-grip-bg);
+  color: var(--rune-grip-fg);
+  border: 1px solid var(--rune-grip-border);
+  border-radius: var(--rune-pill-border-radius);
+  cursor: inherit;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.8);
+  transition: opacity 100ms ease-out, transform 100ms ease-out;
+  pointer-events: none;
+}
+
+/* Column grip is landscape (22×14); row grip is portrait (14×22).
+ * Short axis intentionally lets the SVG overflow ~1px per side,
+ * matching the reference implementation. */
+.rune-editor .rune-col-pill-grip { width: 22px; height: 14px; }
+.rune-editor .rune-row-pill-grip { width: 14px; height: 22px; }
+
+/* Grip SVG — rigid 16×16 block, centered by the flex parent. */
+.rune-editor .rune-col-pill-grip svg,
+.rune-editor .rune-row-pill-grip svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+/* Hover — reveal grip. */
+.rune-editor .rune-col-pill:hover .rune-col-pill-grip,
+.rune-editor .rune-row-pill:hover .rune-row-pill-grip {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Active state — full column/row is selected. Grip stays visible without
+ * hover and swaps to the accent color. The ⋮⋮ icon also flips from the
+ * idle ~42%-foreground gray to solid white so it reads cleanly on the
+ * accent fill (Notion does the same: idle grip uses --c-icoTer dots,
+ * active grip uses fill:white). */
+.rune-editor .rune-col-pill.is-active .rune-col-pill-grip,
+.rune-editor .rune-row-pill.is-active .rune-row-pill-grip {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  background: var(--editor-accent);
+  border-color: var(--editor-accent);
+  color: #fff;
+}
+
+/* === Drop indicator (CellHandleDrag) === */
+/* Frame-mounted (position:absolute) — inherits .rune-editor CSS cascade.
+ * JS sets display:block + width/height/transform on drag start; owns its own
+ * class (.rune-table-drop-indicator) rather than sharing block-drag's rule.
+ *
+ * `top: 0; left: 0` pins the static-position fallback to the frame origin so
+ * the JS `transform: translate(edgeX, tableTop)` resolves from a known (0,0)
+ * anchor. Without this, the indicator inherits its hypothetical in-flow
+ * position — which, for a div appended after the <table> in a block-flow
+ * frame, lands on the line BELOW the table. The transform then shifts from
+ * there, putting the line off-table (only the strip not yet clipped by the
+ * chrome padding-bottom remained visible — typically a sliver near the right
+ * of the table, hence the "shows on the 4th col only" symptom). */
+.rune-editor .rune-table-drop-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--editor-accent);
+  pointer-events: none;
+  z-index: var(--rune-z-table-indicator);
+}
+
+/* === Drag preview (CellHandleDrag) === */
+/* Body-portaled (position:fixed) — the preview is appended to document.body
+ * with the .rune-editor class so the editor's CSS cascade still applies, but
+ * it lives outside the table's stacking context. Mounting it inside
+ * .rune-table-frame put it under z-index:fixed app chrome on some pages and
+ * occasionally under sibling stacking contexts on the table itself; the body
+ * portal at --rune-z-float guarantees it floats above everything. JS computes
+ * viewport coordinates via transform. */
+.rune-table-drag-preview {
+  position: fixed;
+  /* Pin the static-position fallback to the viewport origin so the JS
+   * `transform: translate(...)` computes from a known (0,0). Without this,
+   * a body-portaled fixed element falls at its hypothetical in-flow position,
+   * which on long pages can land far below the viewport — the preview would
+   * appear "invisible" until the next mousemove wrote a transform. */
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: var(--rune-z-float);
+  opacity: 0.65;
+  border-radius: 2px;
+  overflow: visible;
+  /* The wrapper carries .rune-editor so descendant selectors/tokens still
+   * apply after portaling to body. Reset editor-canvas layout from
+   * editor-chrome.css (`padding-bottom: 30vh`) so the floating preview's
+   * visual box is exactly the cloned table, not the editor scroll room. */
+  padding: 0;
+  background: inherit;
+}
+
+/* Grip badge inside the preview — leading-edge handle that mirrors the pill
+ * the user grabbed. Inline JS styles set the size + axis-specific anchor; the
+ * shared rules below handle layout + iconography. */
+.rune-table-drag-preview-grip {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--rune-pill-border-radius);
+  border: 1px solid;
+  pointer-events: none;
+  color: var(--rune-grip-fg);
+}
+.rune-table-drag-preview-grip svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+/* While a cell-drag is in flight, suppress text selection inside the table. */
+.rune-editor .ProseMirror.rune-dragging .rune-table,
+.rune-editor.ProseMirror.rune-dragging .rune-table {
+  user-select: none;
+}
+
+/* Extend buttons (TableExtendButtons, T3).
+ * Anchored to .rune-table-frame (position:relative) — NOT overlay-positioned
+ * via findScrollParent (V1 approach dropped per architectural contract).
+ * CSS owns placement, hover reveal, cursor, hover background, and focus ring.
+ *
+ * .rune-table-extend-col — appears at the right edge of the table (add column).
+ * .rune-table-extend-row — appears at the bottom edge (add row).
+ *
+ * Both are `position: absolute` so they sit outside the collapsed table border
+ * without disturbing table layout. The Notion-style +cell corner button was
+ * dropped — V1 didn't have one and the bottom-right square confused users
+ * during smoke test (it overlapped the col/row buttons visually). */
+.rune-editor .rune-table-extend-col,
+.rune-editor .rune-table-extend-row {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--rune-sel-border-radius);
+  border: 0;
+  background: transparent;
+  color: color-mix(in oklab, var(--rune-editor-fg) 45%, transparent);
+  cursor: pointer;
+  padding: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: background 20ms ease-in, opacity 150ms ease-in-out, color 150ms ease-in-out;
+  z-index: var(--rune-z-cell-handle);
+}
+
+/* The button's real hit box includes the 4px bridge from the table edge to
+ * the visible control. The visible 16px strip is drawn by ::after so the
+ * bridge stays transparent but still participates in :hover. */
+.rune-editor .rune-table-extend-col::after,
+.rune-editor .rune-table-extend-row::after {
+  content: "";
+  position: absolute;
+  border: 1px solid var(--rune-grip-border);
+  border-radius: var(--rune-sel-border-radius);
+  background: transparent;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Plus icon inside the button. Sized smaller than the side-menu's PLUS_SVG
+ * because the buttons are 16px on the short axis (cap icon at 12px so it
+ * leaves a 2px breathing margin). */
+.rune-editor .rune-table-extend-col svg,
+.rune-editor .rune-table-extend-row svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* Add-column button — hit box touches the table edge; visible 16px control
+ * starts after a 4px transparent bridge. */
+.rune-editor .rune-table-extend-col {
+  inset-inline-end: calc(-1 * var(--rune-table-chrome-pad-right) + 4px);
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  padding-inline-start: 4px;
+}
+.rune-editor .rune-table-extend-col::after {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+}
+
+/* Add-row button — hit box touches the table edge; visible 16px control
+ * starts after a 4px transparent bridge. */
+.rune-editor .rune-table-extend-row {
+  bottom: calc(-1 * var(--rune-table-chrome-pad-bottom) + 4px);
+  inset-inline: 0;
+  height: 20px;
+  padding-top: 4px;
+}
+.rune-editor .rune-table-extend-row::after {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 16px;
+}
+
+/* Reveal triggers — match the reference table-extend-buttons behavior:
+ *
+ *   +col is visible when the cursor/selection is in a LAST-COLUMN cell, or the
+ *   mouse hovers a last-column cell, or on the +col button itself / kbd focus.
+ *
+ *   +row is visible when the cursor/selection is in a LAST-ROW cell, or the
+ *   mouse hovers a last-row cell, or on the +row button itself / kbd focus.
+ *
+ * Two reveal sources, by design:
+ *   - HOVER: `:has(tbody tr ...:hover)` — declarative, mouse-driven. (V1 used
+ *     JS mousemove + a "safe zone" rect; :has() expresses the same intent.)
+ *   - SELECTION: `[data-rune-extend-{col,row}-active]` — set on the frame by
+ *     TableExtendButtons from the PM selection. This is what reveals the
+ *     button when the CARET sits in the last cell with no mouse hover.
+ *     `:focus-within` was the previous attempt and is dead here: in a single
+ *     contenteditable the focused element is the `.ProseMirror` root (an
+ *     ancestor of the cells), so `td:focus-within` never matches a caret.
+ *
+ * The 4px transparent gap between the last cell and the button may briefly
+ * fade the button during a fast hover transition; the 150ms opacity
+ * ease-in-out absorbs most of the flicker, and the button's 4px start-padding
+ * bridges the hit area so the cell→button handoff stays continuous. */
+.rune-editor .rune-table-frame:has(tbody tr > :last-child:hover) .rune-table-extend-col,
+.rune-editor .rune-table-frame[data-rune-extend-col-active] .rune-table-extend-col,
+.rune-editor .rune-table-extend-col:hover,
+.rune-editor .rune-table-extend-col:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.rune-editor .rune-table-frame:has(tbody tr:last-child:hover) .rune-table-extend-row,
+.rune-editor .rune-table-frame[data-rune-extend-row-active] .rune-table-extend-row,
+.rune-editor .rune-table-extend-row:hover,
+.rune-editor .rune-table-extend-row:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Hover / focus-visible accent — fills bg + brightens icon to full fg. */
+.rune-editor .rune-table-extend-col:hover,
+.rune-editor .rune-table-extend-row:hover,
+.rune-editor .rune-table-extend-col:focus-visible,
+.rune-editor .rune-table-extend-row:focus-visible {
+  color: var(--rune-editor-fg);
+  outline: none;
+}
+.rune-editor .rune-table-extend-col:hover::after,
+.rune-editor .rune-table-extend-row:hover::after,
+.rune-editor .rune-table-extend-col:focus-visible::after,
+.rune-editor .rune-table-extend-row:focus-visible::after {
+  background: var(--rune-ghost-hover-bg);
+}

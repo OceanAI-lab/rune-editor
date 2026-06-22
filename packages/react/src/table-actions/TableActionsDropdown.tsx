@@ -1,0 +1,519 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) 2026 Ocean AI, LLC
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+// TableActionsDropdown — opens from a table column/row pill grip when
+// CellHandlePills' plugin state signals `dropdown !== null`. Mirrors the
+// pattern of BlockActionsDropdown (sibling chrome under RuneEditor.tsx):
+// PM plugin owns open/close state; this component subscribes via
+// useRuneEditorState, self-renders via Radix Popover for
+// collision-aware positioning (flip + viewport clamping), and owns its
+// own outside-click + Esc listeners.
+//
+// Lifecycle:
+//   * Open / close: CellHandlePills' click handler dispatches
+//     PILL_DROPDOWN_META { open / close }. We render reactively.
+//   * Outside-click: capture-phase document pointerdown closes the
+//     dropdown when the target is neither the dropdown content nor a
+//     pill (the pill click handler in core owns its re-click toggle).
+//   * Esc: capture-phase document keydown closes the dropdown without
+//     letting other handlers see it.
+//   * Pick an item: close the dropdown FIRST (so the pill DOM is no
+//     longer being anchored to before the action's transaction
+//     potentially re-renders it), THEN run the action command. The
+//     two transactions are deliberately separate; merging them would
+//     require rewriting the underlying action commands.
+import { useEffect, useCallback, useRef } from "react"
+import type { Editor } from "@tiptap/core"
+import {
+  cellHandlePillsKey,
+  PILL_DROPDOWN_META,
+  isTableHeaderRow,
+  isTableHeaderColumn,
+  type PillDropdownState,
+  type ColorName,
+} from "@ocai/rune-core"
+import { TableMap } from "@tiptap/pm/tables"
+import {
+  ArrowDownIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  ArrowUpIcon,
+  ChevronRightIcon,
+  CircleXIcon,
+  CopyIcon,
+  PaintRollerIcon,
+  TableHeaderIcon,
+  TrashIcon,
+} from "../icons"
+import { ColorMenu } from "../color"
+import { cn } from "../lib/utils"
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from "../components/ui/popover"
+import { useStableVirtualElement } from "../components/ui/useStableVirtualElement"
+import { editorViewDom, type RuneAnchor } from "../positioning"
+import {
+  nativeMenuContentClass,
+  NativeMenuItem,
+  NativeMenuSwitchItem,
+  nativeMenuItemClass,
+  useNativeMenuSubmenu,
+} from "../native-menu"
+import { useRuneEditorState } from "../useRuneEditorState"
+
+export interface TableActionsDropdownProps {
+  editor: Editor
+}
+
+const CONTENT_ATTR = "data-rune-table-actions-content"
+const SUBTRIGGER_ATTR = "data-rune-table-actions-subtrigger"
+const SUBMENU_ATTR = "data-rune-table-actions-submenu"
+const PILL_SELECTOR = ".rune-col-pill, .rune-row-pill"
+
+export function TableActionsDropdown({ editor }: TableActionsDropdownProps) {
+  const dropdown = useRuneEditorState(
+    editor,
+    (e) => cellHandlePillsKey.getState(e.state)?.dropdown ?? null,
+    { events: ["transaction"], isEqual: samePillDropdown },
+  )
+
+  // Outside-click → close. Skip when target is inside the menu (so item
+  // clicks land) and when target is a pill (CellHandlePills owns the
+  // pill-click toggle).
+  useEffect(() => {
+    if (!dropdown) return
+    const handler = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null
+      if (!target) return
+      if (target.closest(`[${CONTENT_ATTR}]`)) return
+      // The Color submenu is a portaled Radix PopoverContent — a DOM
+      // sibling of the menu content, not a descendant — so it needs its
+      // own allowance or swatch pointerdown closes the dropdown before
+      // the click can commit (regression introduced with the Popover
+      // migration in #272).
+      if (target.closest(`[${SUBMENU_ATTR}]`)) return
+      if (target.closest(PILL_SELECTOR)) return
+      editor.view.dispatch(
+        editor.state.tr.setMeta(PILL_DROPDOWN_META, { close: true }),
+      )
+    }
+    document.addEventListener("pointerdown", handler, true)
+    return () => document.removeEventListener("pointerdown", handler, true)
+  }, [dropdown, editor])
+
+  // Esc → close. Capture + stopPropagation so block-selection's
+  // Esc-clears-MBS handler (M1) doesn't ALSO fire.
+  useEffect(() => {
+    if (!dropdown) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      e.stopPropagation()
+      e.preventDefault()
+      editor.view.dispatch(
+        editor.state.tr.setMeta(PILL_DROPDOWN_META, { close: true }),
+      )
+    }
+    document.addEventListener("keydown", handler, true)
+    return () => document.removeEventListener("keydown", handler, true)
+  }, [dropdown, editor])
+
+  const onPick = useCallback(
+    (action: () => boolean) => {
+      // Close FIRST — unmounts the menu before the action's transaction
+      // (potentially) re-renders the source pill widget. See spec
+      // 2026-05-06-m8-4e-d-table-pill-dropdown.md §"Risk: Pill DOM
+      // unmounts mid-dropdown".
+      //
+      // Scope: applies to position-shifting commands (insert/delete/
+      // duplicate row/column) where the pill widget's keyed position
+      // changes and PM may replace its DOM. Size-preserving commands
+      // that only flip node types in place (e.g. toggleTableHeaderRow
+      // via setNodeMarkup) keep the same widget key + DOM, so callers
+      // may legitimately bypass onPick to keep the menu open — see
+      // ColMenuItems / RowMenuItems' header switch.
+      editor.view.dispatch(
+        editor.state.tr.setMeta(PILL_DROPDOWN_META, { close: true }),
+      )
+      action()
+    },
+    [editor],
+  )
+
+  // Live anchor over the source pill — re-queries the DOM on every floating-ui
+  // measurement (the pill may be re-decorated mid-life by PM) and carries the
+  // editor DOM as contextElement, so the dropdown re-positions on inner-
+  // container scroll without a manual scroll/resize handler.
+  const lastPillRectRef = useRef<DOMRect | null>(null)
+  const pillAnchor = useCallback<RuneAnchor>(() => {
+    if (!dropdown) return lastPillRectRef.current
+    const rect = findPillRect(editor, dropdown)
+    if (rect) lastPillRectRef.current = rect
+    return rect ?? lastPillRectRef.current
+  }, [editor, dropdown])
+  pillAnchor.contextElement = editorViewDom(editor)
+  const pillVirtualRef = useStableVirtualElement(pillAnchor)
+
+  if (!dropdown || !pillVirtualRef) return null
+
+  const isCol = dropdown.axis === "col"
+
+  return (
+    <Popover open={true} modal={false} onOpenChange={() => {}}>
+      <PopoverAnchor virtualRef={pillVirtualRef} />
+      <PopoverContent
+        side={isCol ? "bottom" : "right"}
+        align={isCol ? "center" : "start"}
+        sideOffset={4}
+        collisionPadding={8}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onFocusOutside={(e) => e.preventDefault()}
+        className={cn(nativeMenuContentClass("popover"), "gap-0 rune-table-actions-menu")}
+        role="menu"
+        data-axis={dropdown.axis}
+        {...{ [CONTENT_ATTR]: "" }}
+      >
+        {isCol ? (
+          <ColMenuItems
+            editor={editor}
+            onPick={onPick}
+            tableStart={dropdown.tableStart}
+            index={dropdown.index}
+          />
+        ) : (
+          <RowMenuItems
+            editor={editor}
+            onPick={onPick}
+            tableStart={dropdown.tableStart}
+            index={dropdown.index}
+          />
+        )}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+interface ItemsProps {
+  editor: Editor
+  onPick: (action: () => boolean) => void
+  tableStart: number
+  index: number
+}
+
+interface ColorRowProps {
+  editor: Editor
+  onPick: (action: () => boolean) => void
+  axis: "col" | "row"
+  tableStart: number
+  index: number
+}
+
+function ColorRow({ editor, onPick, axis, tableStart, index }: ColorRowProps) {
+  const submenu = useNativeMenuSubmenu()
+
+  // Read active swatches from the first cell at the pill's (axis, index).
+  // Spec §"Intentional limitation": no mixed-state UI when cells in the
+  // axis carry different colors.
+  const { activeText, activeBg } = readFirstCellColor(
+    editor,
+    axis,
+    tableStart,
+    index,
+  )
+
+  const apply = (kind: "textColor" | "backgroundColor", name: ColorName) => {
+    const cmd =
+      axis === "col"
+        ? kind === "textColor"
+          ? () =>
+              editor.commands.setTableColumnTextColor({
+                tableStart,
+                colIndex: index,
+                name,
+              })
+          : () =>
+              editor.commands.setTableColumnBackgroundColor({
+                tableStart,
+                colIndex: index,
+                name,
+              })
+        : kind === "textColor"
+        ? () =>
+            editor.commands.setTableRowTextColor({
+              tableStart,
+              rowIndex: index,
+              name,
+            })
+        : () =>
+            editor.commands.setTableRowBackgroundColor({
+              tableStart,
+              rowIndex: index,
+              name,
+            })
+    onPick(cmd)
+  }
+
+  return (
+    <Popover open={submenu.isOpen} onOpenChange={() => {}}>
+      <PopoverAnchor asChild>
+        <div
+          {...{ [SUBTRIGGER_ATTR]: "" }}
+          className={cn(
+            nativeMenuItemClass("default"),
+            submenu.isOpen && "bg-accent text-accent-foreground",
+          )}
+          {...submenu.triggerProps}
+          role="menuitem"
+          aria-haspopup="menu"
+          aria-expanded={submenu.isOpen}
+        >
+          <PaintRollerIcon />
+          <span>Color</span>
+          <ChevronRightIcon className="ml-auto" />
+        </div>
+      </PopoverAnchor>
+      <PopoverContent
+        side="right"
+        align="start"
+        sideOffset={4}
+        collisionPadding={8}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onFocusOutside={(e) => e.preventDefault()}
+        className={cn(nativeMenuContentClass("popover"), "w-max p-0")}
+        {...{ [SUBMENU_ATTR]: "" }}
+        {...submenu.contentProps}
+      >
+        <ColorMenu
+          activeText={activeText}
+          activeBg={activeBg}
+          onApplyText={(name) => apply("textColor", name)}
+          onApplyBackground={(name) => apply("backgroundColor", name)}
+        />
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+function readFirstCellColor(
+  editor: Editor,
+  axis: "col" | "row",
+  tableStart: number,
+  index: number,
+): { activeText: ColorName | null; activeBg: ColorName | null } {
+  // Use TableMap — same primitive the command-side walker
+  // (setCellAxisAttr) uses. Hand-rolling row.maybeChild(index) works for
+  // today's no-merged-cells schema but diverges from the canonical table
+  // walking path; once they diverge, future merge-cell or sub-row
+  // changes can break this surface silently.
+  const table = editor.state.doc.nodeAt(tableStart - 1)
+  if (!table || table.type.name !== "table")
+    return { activeText: null, activeBg: null }
+  const map = TableMap.get(table)
+  if (axis === "col" && (index < 0 || index >= map.width)) {
+    return { activeText: null, activeBg: null }
+  }
+  if (axis === "row" && (index < 0 || index >= map.height)) {
+    return { activeText: null, activeBg: null }
+  }
+  // First cell in the axis: row 0, col=index for "col"; row=index, col 0 for "row".
+  const cellOffset =
+    axis === "col"
+      ? map.map[0 * map.width + index]
+      : map.map[index * map.width + 0]
+  if (cellOffset === undefined) return { activeText: null, activeBg: null }
+  const cell = table.nodeAt(cellOffset)
+  if (!cell) return { activeText: null, activeBg: null }
+  return {
+    activeText: (cell.attrs.textColor ?? null) as ColorName | null,
+    activeBg: (cell.attrs.backgroundColor ?? null) as ColorName | null,
+  }
+}
+
+function ColMenuItems({ editor, onPick, tableStart, index }: ItemsProps) {
+  // Read inline (no useMemo) so the switch reflects header state after each
+  // transaction. The parent TableActionsDropdown subscribes through
+  // useRuneEditorState, propagating fresh props down here; with useMemo
+  // ([editor, tableStart, index]) the cached value would survive a
+  // doc-changing toggle and the switch would visually freeze.
+  const tableNode = editor.state.doc.nodeAt(tableStart - 1)
+  const isHeader =
+    tableNode && tableNode.type.name === "table"
+      ? isTableHeaderColumn(tableNode, index)
+      : false
+
+  // Bypasses onPick deliberately: toggleTableHeaderColumn uses
+  // setNodeMarkup (size-preserving), so the pill widget's keyed position
+  // is unchanged and the dropdown stays correctly anchored — letting the
+  // user pick a colour immediately after flipping. See onPick's "Scope"
+  // note above.
+  const toggleHeader = useCallback(() => {
+    editor.commands.toggleTableHeaderColumn({ tableStart, colIndex: index })
+  }, [editor, tableStart, index])
+
+  return (
+    <>
+      {index === 0 ? (
+        <NativeMenuSwitchItem
+          icon={TableHeaderIcon}
+          checked={isHeader}
+          onCheckedChange={toggleHeader}
+        >
+          Header column
+        </NativeMenuSwitchItem>
+      ) : null}
+      <NativeMenuItem
+        icon={ArrowLeftIcon}
+        onClick={() => onPick(() => editor.commands.addTableColumnBefore())}
+      >
+        Insert left
+      </NativeMenuItem>
+      <NativeMenuItem
+        icon={ArrowRightIcon}
+        onClick={() => onPick(() => editor.commands.addTableColumnAfter())}
+      >
+        Insert right
+      </NativeMenuItem>
+      <NativeMenuItem
+        icon={CopyIcon}
+        onClick={() => onPick(() => editor.commands.duplicateTableColumn())}
+      >
+        Duplicate column
+      </NativeMenuItem>
+      <NativeMenuItem
+        icon={CircleXIcon}
+        onClick={() => onPick(() => editor.commands.clearTableColumn())}
+      >
+        Clear contents
+      </NativeMenuItem>
+      {/* key on (tableStart, index) so a pill→pill re-anchor within the
+        same axis (the pill plugin's `apply` overwrites `dropdown` directly,
+        skipping `null`) remounts ColorRow and resets useNativeMenuSubmenu —
+        otherwise the swatch panel appears stale-open on the new pill. */}
+      <ColorRow
+        key={`${tableStart}-${index}`}
+        editor={editor}
+        onPick={onPick}
+        axis="col"
+        tableStart={tableStart}
+        index={index}
+      />
+      <NativeMenuItem
+        icon={TrashIcon}
+        onClick={() => onPick(() => editor.commands.deleteTableColumn())}
+        variant="destructive"
+      >
+        Delete column
+      </NativeMenuItem>
+    </>
+  )
+}
+
+function RowMenuItems({ editor, onPick, tableStart, index }: ItemsProps) {
+  // See ColMenuItems for the inline-read rationale (no useMemo).
+  const tableNode = editor.state.doc.nodeAt(tableStart - 1)
+  const isHeader =
+    tableNode && tableNode.type.name === "table"
+      ? isTableHeaderRow(tableNode, index)
+      : false
+
+  // See ColMenuItems for the onPick-bypass rationale.
+  const toggleHeader = useCallback(() => {
+    editor.commands.toggleTableHeaderRow({ tableStart, rowIndex: index })
+  }, [editor, tableStart, index])
+
+  return (
+    <>
+      {index === 0 ? (
+        <NativeMenuSwitchItem
+          icon={TableHeaderIcon}
+          checked={isHeader}
+          onCheckedChange={toggleHeader}
+        >
+          Header row
+        </NativeMenuSwitchItem>
+      ) : null}
+      <NativeMenuItem
+        icon={ArrowUpIcon}
+        onClick={() => onPick(() => editor.commands.addTableRowBefore())}
+      >
+        Insert above
+      </NativeMenuItem>
+      <NativeMenuItem
+        icon={ArrowDownIcon}
+        onClick={() => onPick(() => editor.commands.addTableRowAfter())}
+      >
+        Insert below
+      </NativeMenuItem>
+      <NativeMenuItem
+        icon={CopyIcon}
+        onClick={() => onPick(() => editor.commands.duplicateTableRow())}
+      >
+        Duplicate row
+      </NativeMenuItem>
+      <NativeMenuItem
+        icon={CircleXIcon}
+        onClick={() => onPick(() => editor.commands.clearTableRow())}
+      >
+        Clear contents
+      </NativeMenuItem>
+      {/* See ColMenuItems for the key rationale. */}
+      <ColorRow
+        key={`${tableStart}-${index}`}
+        editor={editor}
+        onPick={onPick}
+        axis="row"
+        tableStart={tableStart}
+        index={index}
+      />
+      <NativeMenuItem
+        icon={TrashIcon}
+        onClick={() => onPick(() => editor.commands.deleteTableRow())}
+        variant="destructive"
+      >
+        Delete row
+      </NativeMenuItem>
+    </>
+  )
+}
+
+// Locate the source pill's DOM rect. Scoped to the active table's frame
+// so a same-axis pill in a different table doesn't match. PM's nodeDOM
+// returns the .rune-block wrapper; descend to .rune-table-frame.
+function findPillRect(
+  editor: Editor,
+  dropdown: PillDropdownState,
+): DOMRect | null {
+  const blockDom = editor.view.nodeDOM(
+    dropdown.tableStart - 1,
+  ) as HTMLElement | null
+  const frame = blockDom?.querySelector(
+    ".rune-table-frame",
+  ) as HTMLElement | null
+  if (!frame) return null
+  const selector =
+    dropdown.axis === "col"
+      ? `.rune-col-pill[data-col="${dropdown.index}"]`
+      : `.rune-row-pill[data-row="${dropdown.index}"]`
+  const pill = frame.querySelector(selector) as HTMLElement | null
+  return pill ? pill.getBoundingClientRect() : null
+}
+
+function samePillDropdown(
+  a: PillDropdownState | null,
+  b: PillDropdownState | null,
+): boolean {
+  if (a === null || b === null) return a === b
+  return a.tableStart === b.tableStart && a.axis === b.axis && a.index === b.index
+}

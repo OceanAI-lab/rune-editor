@@ -1,0 +1,200 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* Color palette — theme-aware via :root tokens + .dark overrides. Light is
+   the default mode; consumers add .dark on <html> or <body> (matches
+   shadcn / Tailwind class-based dark convention) to flip backgrounds.
+   Foregrounds are theme-invariant per Notion's own design philosophy.
+
+   Token layer is at :root so portaled popovers (Radix Popover mounts to
+   <body>) can read tokens — defining them on .rune-editor would break
+   swatch chips inside ColorMenu. Application rules are scoped to
+   .rune-editor so a stray data-text-color attr in host-app code doesn't
+   accidentally get styled.
+
+   Two-layer var convention:
+   - --rune-color-X-fg / -bg          semantic, consumer-facing
+   - --rune-color-X-bg-light / -dark  raw, implementation detail
+   Use the semantic names; they re-point under .dark automatically.
+
+   Match the matching-reference values in
+   packages/core/src/shared/color-tokens/colors.ts — both files mirror
+   Notion's audited palette. */
+
+:root {
+  /* fg — theme-invariant. */
+  --rune-color-gray-fg:   rgb(125, 122, 118);
+  --rune-color-brown-fg:  rgb(152, 120,  94);
+  --rune-color-orange-fg: rgb(198, 127,  63);
+  --rune-color-yellow-fg: rgb(195, 150,  71);
+  --rune-color-green-fg:  rgb( 97, 147, 113);
+  --rune-color-blue-fg:   rgb( 74, 124, 195);
+  --rune-color-purple-fg: rgb(147, 109, 176);
+  --rune-color-pink-fg:   rgb(179,  84, 136);
+  --rune-color-red-fg:    rgb(192,  89,  78);
+
+  /* bg-light — derived. 14% fg + 86% white fits all 9 Notion light bg
+     values with ≤4 RGB error. To globally tune light-bg saturation,
+     change this single percentage. */
+  --rune-color-gray-bg-light:   color-mix(in srgb, var(--rune-color-gray-fg)   14%, white);
+  --rune-color-brown-bg-light:  color-mix(in srgb, var(--rune-color-brown-fg)  14%, white);
+  --rune-color-orange-bg-light: color-mix(in srgb, var(--rune-color-orange-fg) 14%, white);
+  --rune-color-yellow-bg-light: color-mix(in srgb, var(--rune-color-yellow-fg) 14%, white);
+  --rune-color-green-bg-light:  color-mix(in srgb, var(--rune-color-green-fg)  14%, white);
+  --rune-color-blue-bg-light:   color-mix(in srgb, var(--rune-color-blue-fg)   14%, white);
+  --rune-color-purple-bg-light: color-mix(in srgb, var(--rune-color-purple-fg) 14%, white);
+  --rune-color-pink-bg-light:   color-mix(in srgb, var(--rune-color-pink-fg)   14%, white);
+  --rune-color-red-bg-light:    color-mix(in srgb, var(--rune-color-red-fg)    14%, white);
+
+  /* bg-dark — explicit. Notion hand-tunes these; no formula fits across
+     all 9 colors (verified per-color in HSL — hues match, L/S diverge). */
+  --rune-color-gray-bg-dark:   rgb(56, 56, 54);
+  --rune-color-brown-bg-dark:  rgb(67, 55, 46);
+  --rune-color-orange-bg-dark: rgb(79, 55, 35);
+  --rune-color-yellow-bg-dark: rgb(78, 69, 41);
+  --rune-color-green-bg-dark:  rgb(43, 61, 49);
+  --rune-color-blue-bg-dark:   rgb(40, 56, 78);
+  --rune-color-purple-bg-dark: rgb(58, 46, 70);
+  --rune-color-pink-bg-dark:   rgb(73, 45, 60);
+  --rune-color-red-bg-dark:    rgb(75, 46, 42);
+
+  /* bg — semantic, theme-aware. Defaults to light. */
+  --rune-color-gray-bg:   var(--rune-color-gray-bg-light);
+  --rune-color-brown-bg:  var(--rune-color-brown-bg-light);
+  --rune-color-orange-bg: var(--rune-color-orange-bg-light);
+  --rune-color-yellow-bg: var(--rune-color-yellow-bg-light);
+  --rune-color-green-bg:  var(--rune-color-green-bg-light);
+  --rune-color-blue-bg:   var(--rune-color-blue-bg-light);
+  --rune-color-purple-bg: var(--rune-color-purple-bg-light);
+  --rune-color-pink-bg:   var(--rune-color-pink-bg-light);
+  --rune-color-red-bg:    var(--rune-color-red-bg-light);
+}
+
+.dark {
+  /* Only bg flips. fg stays. */
+  --rune-color-gray-bg:   var(--rune-color-gray-bg-dark);
+  --rune-color-brown-bg:  var(--rune-color-brown-bg-dark);
+  --rune-color-orange-bg: var(--rune-color-orange-bg-dark);
+  --rune-color-yellow-bg: var(--rune-color-yellow-bg-dark);
+  --rune-color-green-bg:  var(--rune-color-green-bg-dark);
+  --rune-color-blue-bg:   var(--rune-color-blue-bg-dark);
+  --rune-color-purple-bg: var(--rune-color-purple-bg-dark);
+  --rune-color-pink-bg:   var(--rune-color-pink-bg-dark);
+  --rune-color-red-bg:    var(--rune-color-red-bg-dark);
+}
+
+/* Application — block-level (data-text-color rides on .rune-block-content)
+   AND inline (data-text-color rides on a textStyle <span>). Same selector
+   matches both so one rule covers either. Scoped to .rune-editor so a
+   stray attr outside the editor doesn't trigger styling. */
+
+.rune-editor [data-text-color="gray"]   { color: var(--rune-color-gray-fg); }
+.rune-editor [data-text-color="brown"]  { color: var(--rune-color-brown-fg); }
+.rune-editor [data-text-color="orange"] { color: var(--rune-color-orange-fg); }
+.rune-editor [data-text-color="yellow"] { color: var(--rune-color-yellow-fg); }
+.rune-editor [data-text-color="green"]  { color: var(--rune-color-green-fg); }
+.rune-editor [data-text-color="blue"]   { color: var(--rune-color-blue-fg); }
+.rune-editor [data-text-color="purple"] { color: var(--rune-color-purple-fg); }
+.rune-editor [data-text-color="pink"]   { color: var(--rune-color-pink-fg); }
+.rune-editor [data-text-color="red"]    { color: var(--rune-color-red-fg); }
+
+.rune-editor [data-background-color="gray"]   { background-color: var(--rune-color-gray-bg); }
+.rune-editor [data-background-color="brown"]  { background-color: var(--rune-color-brown-bg); }
+.rune-editor [data-background-color="orange"] { background-color: var(--rune-color-orange-bg); }
+.rune-editor [data-background-color="yellow"] { background-color: var(--rune-color-yellow-bg); }
+.rune-editor [data-background-color="green"]  { background-color: var(--rune-color-green-bg); }
+.rune-editor [data-background-color="blue"]   { background-color: var(--rune-color-blue-bg); }
+.rune-editor [data-background-color="purple"] { background-color: var(--rune-color-purple-bg); }
+.rune-editor [data-background-color="pink"]   { background-color: var(--rune-color-pink-bg); }
+.rune-editor [data-background-color="red"]    { background-color: var(--rune-color-red-bg); }
+
+/* Swatch chip — used by ColorIndicator. NOT scoped to .rune-editor because
+   ColorMenu portals chips through Radix Popover to <body>. The selector
+   itself is rune-specific (data-color-indicator) so cross-namespace
+   collisions are not a concern. */
+
+[data-color-indicator="default"][data-indicator-variant="text"]       { color: inherit; }
+[data-color-indicator="gray"][data-indicator-variant="text"]          { color: var(--rune-color-gray-fg); }
+[data-color-indicator="brown"][data-indicator-variant="text"]         { color: var(--rune-color-brown-fg); }
+[data-color-indicator="orange"][data-indicator-variant="text"]        { color: var(--rune-color-orange-fg); }
+[data-color-indicator="yellow"][data-indicator-variant="text"]        { color: var(--rune-color-yellow-fg); }
+[data-color-indicator="green"][data-indicator-variant="text"]         { color: var(--rune-color-green-fg); }
+[data-color-indicator="blue"][data-indicator-variant="text"]          { color: var(--rune-color-blue-fg); }
+[data-color-indicator="purple"][data-indicator-variant="text"]        { color: var(--rune-color-purple-fg); }
+[data-color-indicator="pink"][data-indicator-variant="text"]          { color: var(--rune-color-pink-fg); }
+[data-color-indicator="red"][data-indicator-variant="text"]           { color: var(--rune-color-red-fg); }
+
+/* For text variant: chip background defaults to transparent unless an
+   explicit data-indicator-bg overrides (used by InlineToolbar to show
+   text+bg combo on a single chip). */
+[data-color-indicator][data-indicator-variant="text"]       { background-color: transparent; }
+[data-color-indicator="default"][data-indicator-variant="background"] { background-color: transparent; }
+[data-color-indicator="gray"][data-indicator-variant="background"]    { background-color: var(--rune-color-gray-bg); }
+[data-color-indicator="brown"][data-indicator-variant="background"]   { background-color: var(--rune-color-brown-bg); }
+[data-color-indicator="orange"][data-indicator-variant="background"]  { background-color: var(--rune-color-orange-bg); }
+[data-color-indicator="yellow"][data-indicator-variant="background"]  { background-color: var(--rune-color-yellow-bg); }
+[data-color-indicator="green"][data-indicator-variant="background"]   { background-color: var(--rune-color-green-bg); }
+[data-color-indicator="blue"][data-indicator-variant="background"]    { background-color: var(--rune-color-blue-bg); }
+[data-color-indicator="purple"][data-indicator-variant="background"]  { background-color: var(--rune-color-purple-bg); }
+[data-color-indicator="pink"][data-indicator-variant="background"]    { background-color: var(--rune-color-pink-bg); }
+[data-color-indicator="red"][data-indicator-variant="background"]     { background-color: var(--rune-color-red-bg); }
+
+/* Secondary bg attr — used when the chip needs to render a different
+   background color than its primary `name` (InlineToolbar's combined
+   text-on-bg indicator). Compound selector matches the specificity of
+   the variant=text "transparent fallback" rule above (both 0,2,0); source
+   order then makes the bg-X rule win. Without the leading
+   [data-color-indicator], specificity drops to 0,1,0 and the transparent
+   fallback would beat it — leaving the combined chip blank. */
+[data-color-indicator][data-indicator-bg="default"] { background-color: transparent; }
+[data-color-indicator][data-indicator-bg="gray"]    { background-color: var(--rune-color-gray-bg); }
+[data-color-indicator][data-indicator-bg="brown"]   { background-color: var(--rune-color-brown-bg); }
+[data-color-indicator][data-indicator-bg="orange"]  { background-color: var(--rune-color-orange-bg); }
+[data-color-indicator][data-indicator-bg="yellow"]  { background-color: var(--rune-color-yellow-bg); }
+[data-color-indicator][data-indicator-bg="green"]   { background-color: var(--rune-color-green-bg); }
+[data-color-indicator][data-indicator-bg="blue"]    { background-color: var(--rune-color-blue-bg); }
+[data-color-indicator][data-indicator-bg="purple"]  { background-color: var(--rune-color-purple-bg); }
+[data-color-indicator][data-indicator-bg="pink"]    { background-color: var(--rune-color-pink-bg); }
+[data-color-indicator][data-indicator-bg="red"]     { background-color: var(--rune-color-red-bg); }
+
+/* Idle ring — derived via color-mix from fg. Theme-invariant (fg
+   doesn't flip), so this rule is one-line and works in both modes. */
+[data-color-indicator="default"]                       { box-shadow: inset 0 0 0 1px color-mix(in oklch, currentColor 18%, transparent); }
+[data-color-indicator="gray"]                          { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--rune-color-gray-fg)   25%, transparent); }
+[data-color-indicator="brown"]                         { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--rune-color-brown-fg)  25%, transparent); }
+[data-color-indicator="orange"]                        { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--rune-color-orange-fg) 25%, transparent); }
+[data-color-indicator="yellow"]                        { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--rune-color-yellow-fg) 25%, transparent); }
+[data-color-indicator="green"]                         { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--rune-color-green-fg)  25%, transparent); }
+[data-color-indicator="blue"]                          { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--rune-color-blue-fg)   25%, transparent); }
+[data-color-indicator="purple"]                        { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--rune-color-purple-fg) 25%, transparent); }
+[data-color-indicator="pink"]                          { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--rune-color-pink-fg)   25%, transparent); }
+[data-color-indicator="red"]                           { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--rune-color-red-fg)    25%, transparent); }
+
+/* Active ring AND hover-on-swatch ring share the same visual. Hover scope is
+   limited to ColorMenu's swatch buttons (which carry data-swatch-kind), so
+   the InlineToolbar's color-trigger button — which has its own hover-bg
+   affordance via Tailwind — keeps its idle ring while open. The chip's
+   transition-shadow Tailwind class smooths the ring change. */
+[data-color-indicator="default"][data-indicator-active],
+button[data-swatch-kind]:hover > [data-color-indicator="default"] { box-shadow: inset 0 0 0 1.5px color-mix(in oklch, currentColor 35%, transparent); }
+[data-color-indicator="gray"][data-indicator-active],
+button[data-swatch-kind]:hover > [data-color-indicator="gray"]    { box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--rune-color-gray-fg)   50%, transparent); }
+[data-color-indicator="brown"][data-indicator-active],
+button[data-swatch-kind]:hover > [data-color-indicator="brown"]   { box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--rune-color-brown-fg)  50%, transparent); }
+[data-color-indicator="orange"][data-indicator-active],
+button[data-swatch-kind]:hover > [data-color-indicator="orange"]  { box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--rune-color-orange-fg) 50%, transparent); }
+[data-color-indicator="yellow"][data-indicator-active],
+button[data-swatch-kind]:hover > [data-color-indicator="yellow"]  { box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--rune-color-yellow-fg) 50%, transparent); }
+[data-color-indicator="green"][data-indicator-active],
+button[data-swatch-kind]:hover > [data-color-indicator="green"]   { box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--rune-color-green-fg)  50%, transparent); }
+[data-color-indicator="blue"][data-indicator-active],
+button[data-swatch-kind]:hover > [data-color-indicator="blue"]    { box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--rune-color-blue-fg)   50%, transparent); }
+[data-color-indicator="purple"][data-indicator-active],
+button[data-swatch-kind]:hover > [data-color-indicator="purple"]  { box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--rune-color-purple-fg) 50%, transparent); }
+[data-color-indicator="pink"][data-indicator-active],
+button[data-swatch-kind]:hover > [data-color-indicator="pink"]    { box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--rune-color-pink-fg)   50%, transparent); }
+[data-color-indicator="red"][data-indicator-active],
+button[data-swatch-kind]:hover > [data-color-indicator="red"]     { box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--rune-color-red-fg)    50%, transparent); }

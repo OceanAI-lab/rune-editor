@@ -1,0 +1,127 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* shadcn design tokens — @theme surfaces Tailwind-facing aliases,
+   :root / .dark carry the values.
+
+   Light is the authoritative set; .dark overrides by selector. All
+   chromaless tokens derive from two seeds (--background, --foreground)
+   via color-mix(in oklab, fg X%, bg). Percentages are reverse-derived
+   from the original oklch literals so the rendered colors match the
+   previous hand-authored values exactly (chroma=0 makes oklab mixing
+   reduce to linear L interpolation).
+
+     X = (L_target − L_bg) / (L_fg − L_bg)
+
+   Downstream apps re-theme by overriding the two seeds; everything
+   else tracks. --destructive stays as a separate primitive — it has
+   chroma, so it isn't derivable from the grayscale seeds. */
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: 'Geist Variable', sans-serif;
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+
+  --popover: var(--background);
+  --popover-foreground: var(--foreground);
+
+  --primary: color-mix(in oklab, var(--foreground) 93%, var(--background));
+  --primary-foreground: color-mix(in oklab, var(--foreground) 2%, var(--background));
+
+  --secondary: color-mix(in oklab, var(--foreground) 4%, var(--background));
+  --secondary-foreground: color-mix(in oklab, var(--foreground) 93%, var(--background));
+
+  --muted: color-mix(in oklab, var(--foreground) 4%, var(--background));
+  --muted-foreground: color-mix(in oklab, var(--foreground) 52%, var(--background));
+
+  --accent: color-mix(in oklab, var(--foreground) 4%, var(--background));
+  --accent-foreground: color-mix(in oklab, var(--foreground) 93%, var(--background));
+
+  --destructive: oklch(0.577 0.245 27.325);
+
+  --border: color-mix(in oklab, var(--foreground) 9%, var(--background));
+  --input: color-mix(in oklab, var(--foreground) 9%, var(--background));
+  --ring: var(--editor-accent);
+
+  --radius: 0.625rem;
+
+  /* Floating-panel "shadow box" chrome contract — the named, themeable surface
+     a downstream host overrides to retheme rune's popovers/menus, or reads via
+     the `.rune-chrome` class (styles/chrome.css). On :root (not .rune-editor)
+     so a PORTALED panel rendered outside the editor still resolves them. bg/fg/
+     radius alias the existing popover/radius tokens (so they track a reskin);
+     shadow/ring hold the literal values Tailwind's shadow-md/-lg + ring-1
+     ring-foreground/10 render, so the .rune-chrome path matches RUNE_CHROME_CLASS.
+     The .dark popover override flows through --rune-chrome-bg automatically. */
+  --rune-chrome-bg: var(--popover);
+  --rune-chrome-fg: var(--popover-foreground);
+  --rune-chrome-radius: var(--radius);
+  --rune-chrome-ring: color-mix(in oklab, var(--foreground) 10%, transparent);
+  --rune-chrome-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --rune-chrome-shadow-strong: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  /* Floating-TOC hover-card (the heading dropdown that opens off the minimap)
+     background — its own themeable surface so its fill can be tuned apart from
+     the generic popover chrome. On :root (not .rune-editor) because the card is
+     Radix-portaled to <body>, so an editor-scoped var wouldn't reach it; the
+     .dark --background override flows through at use-time automatically (same
+     pattern as --rune-chrome-bg). Defaults to the page/editor background so the
+     card reads flush with the canvas instead of as a lifted popover. */
+  --rune-toc-card-bg: var(--background);
+}
+
+.dark {
+  --background: oklch(0.213 0 0);
+  --foreground: oklch(0.985 0 0);
+
+  --popover: color-mix(in oklab, var(--foreground) 7%, var(--background));
+  --popover-foreground: var(--foreground);
+
+  --primary: color-mix(in oklab, var(--foreground) 93%, var(--background));
+  --primary-foreground: color-mix(in oklab, var(--foreground) 7%, var(--background));
+
+  --secondary: color-mix(in oklab, var(--foreground) 15%, var(--background));
+  --secondary-foreground: var(--foreground);
+
+  --muted: color-mix(in oklab, var(--foreground) 15%, var(--background));
+  --muted-foreground: color-mix(in oklab, var(--foreground) 67%, var(--background));
+
+  --accent: color-mix(in oklab, var(--foreground) 15%, var(--background));
+  --accent-foreground: var(--foreground);
+
+  --destructive: oklch(0.704 0.191 22.216);
+
+  --border: color-mix(in oklab, var(--foreground) 10%, transparent);
+  --input: color-mix(in oklab, var(--foreground) 15%, transparent);
+  --ring: var(--editor-accent);
+}

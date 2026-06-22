@@ -1,0 +1,53 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* @ocai/rune-react stylesheet — barrel.
+   Feature files live under styles/ co-located by concern. Add a new
+   block/extension = drop a file next to its siblings + add one @import
+   line here. Vite lib build inlines everything into dist/style.css. */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+/* Force-scan this package's own JSX so utility classes used inside
+   @ocai/rune-react components (popover, slash menu, etc.) end up in the
+   compiled CSS even when a downstream consumer (via a dev alias) imports this file from outside the package. The
+   default Tailwind v4 source detection runs from the consumer's vite
+   root and would otherwise miss packages/react/src/**. */
+@source "./**/*.{ts,tsx}";
+
+@custom-variant dark (&:is(.dark *));
+
+@import "./styles/shadcn-tokens.css";
+@import "./styles/base.css";
+@import "./styles/rune-tokens.css";
+@import "./styles/chrome.css";
+@import "./styles/editor-chrome.css";
+@import "./styles/typography.css";
+@import "./styles/wikilink.css";
+@import "./styles/blocks/paragraph.css";
+@import "./styles/blocks/heading.css";
+@import "./styles/blocks/divider.css";
+@import "./styles/blocks/lists.css";
+@import "./styles/blocks/blockquote.css";
+@import "./styles/blocks/codeBlock.css";
+@import "./styles/blocks/table.css";
+@import "./styles/blocks/toggle.css";
+@import "./styles/blocks/toc.css";
+@import "./styles/blocks/columns.css";
+@import "./styles/blocks/image.css";
+@import "./styles/blocks/media.css";
+@import "./styles/block-resize.css";
+@import "./styles/source-import.css";
+@import "./styles/side-menu.css";
+@import "./styles/block-drag.css";
+@import "./styles/block-selection.css";
+@import "./styles/placeholder.css";
+@import "./styles/color-palette.css";
+@import "./styles/math.css";
+@import "./suggestion-menu/suggestion.css";

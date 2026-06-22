@@ -1,0 +1,92 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* Suggestion trigger ghost text + background pill.
+
+   `.rune-trigger` wraps the active trigger range (e.g. `/query`).
+   `.rune-trigger--placeholder` toggles on only while the query is
+   empty — @tiptap/suggestion reads `!query.length` and swaps the
+   emptyClass in/out. The ghost text comes from `decorationContent`,
+   which the plugin writes to `data-decoration-content` on the span,
+   so each trigger ships its own copy through TriggerConfig.placeholder. */
+
+/* Notion-style background pill around the live filter range. The
+   pill is on the whole `.rune-trigger` (so it's visible the moment
+   `/` is typed and grows with the query), uses a translucent muted
+   tint, and extends a few pixels outward via box-shadow rather than
+   padding so adjacent text doesn't shift on open/close. The token
+   `--rune-trigger-bg` is declared on `.rune-editor` so consumers can
+   retheme it without overriding selectors. */
+.rune-editor {
+  --rune-trigger-bg: color-mix(in oklab, var(--rune-editor-fg) 3%, transparent);
+}
+
+.rune-trigger {
+  /* `padding-inline` (not box-shadow alone) so the right side reads
+     symmetric to the left — without padding, the caret blinks flush
+     against the right halo edge while the left has clean breathing
+     room, which makes the pill look lopsided. */
+  padding-inline: 3px;
+  border-radius: 3px;
+  background: var(--rune-trigger-bg);
+  /* Slim same-color outset on top of the padding extends the pill
+     beyond the padded box for the Notion "halo" feel. Vertical
+     thickness comes from box-shadow (doesn't grow the line). */
+  box-shadow: 0 0 0 2px var(--rune-trigger-bg);
+}
+
+/* Fade-out applied by the sibling fade plugin (`createTriggerPlugin.ts`)
+   for ~150 ms after the suggestion session ends. The plugin holds the
+   decoration alive across the animation, then clears it. */
+.rune-trigger--exiting {
+  pointer-events: none;
+  animation: rune-trigger-fadeout 150ms ease forwards;
+}
+
+@keyframes rune-trigger-fadeout {
+  to {
+    background: transparent;
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.rune-trigger--placeholder::after {
+  content: attr(data-decoration-content);
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+.rune-editor .ProseMirror.rune-ime-composing .rune-trigger--placeholder::after {
+  content: none;
+}
+
+/* Thin, low-contrast scrollbar for suggestion-style scrollers.
+   Notion-style: the gutter is invisible, the thumb is a faint pill that
+   doesn't compete with the item rows. */
+.rune-muted-scrollbar,
+.rune-muted-scrollbar * {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 40%, transparent)
+    transparent;
+}
+.rune-muted-scrollbar::-webkit-scrollbar,
+.rune-muted-scrollbar *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.rune-muted-scrollbar::-webkit-scrollbar-track,
+.rune-muted-scrollbar *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.rune-muted-scrollbar::-webkit-scrollbar-thumb,
+.rune-muted-scrollbar *::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
+  border-radius: 9999px;
+}
+.rune-muted-scrollbar::-webkit-scrollbar-thumb:hover,
+.rune-muted-scrollbar *::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--muted-foreground) 60%, transparent);
+}

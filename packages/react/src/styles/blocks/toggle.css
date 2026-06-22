@@ -1,0 +1,116 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+.rune-editor {
+  --rune-toggle-pad-inline: 6px;
+  --rune-toggle-caret-box: 24px;
+  --rune-toggle-caret-row: 28px;
+  --rune-toggle-title-gap: 6px;
+  --rune-toggle-title-pad-y: 2px;
+}
+
+.rune-editor :is(.ProseMirror, .rune-column) > .rune-block.rune-toggle {
+  --block-pad-top: 1px;
+  padding-top: var(--block-pad-top);
+  padding-bottom: 6px;
+  padding-inline: var(--rune-toggle-pad-inline);
+}
+
+.rune-editor .rune-toggle > .rune-block-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding-inline: var(--block-content-pad-x);
+  border-radius: 6px;
+}
+
+.rune-editor .rune-toggle:is(
+  [data-rune-toggle-level="2"],
+  [data-rune-toggle-level="3"],
+  [data-rune-toggle-level="4"]
+) > .rune-block-content {
+  align-items: center;
+}
+
+.rune-editor .rune-toggle-caret {
+  width: var(--rune-toggle-caret-box);
+  height: var(--rune-toggle-caret-box);
+  min-height: var(--rune-toggle-caret-box);
+  margin-block: calc((var(--rune-toggle-caret-row) - var(--rune-toggle-caret-box)) / 2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Caret sits inline at the block-content's left edge — same x as where a
+     paragraph's text would start. The title then naturally shifts right by
+     the caret's width. This matches Notion's layout: gutter (side-menu) →
+     caret → title. Earlier iteration pulled the caret into the gutter with a
+     negative margin; that overlapped the side-menu grip. */
+  border: 0;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  flex: 0 0 auto;
+  color: var(--rune-toggle-caret-fg);
+  transition: background-color 120ms ease-out;
+}
+
+.rune-editor .rune-toggle-caret:hover {
+  background-color: var(--rune-toggle-caret-hover-bg);
+}
+
+.rune-editor .rune-toggle-caret-icon {
+  width: var(--rune-toggle-caret-size);
+  height: var(--rune-toggle-caret-size);
+  fill: currentColor;
+  opacity: 0.5;
+  transition: transform 200ms ease-out, opacity 120ms ease-out;
+}
+
+.rune-editor .rune-toggle-caret:hover .rune-toggle-caret-icon {
+  opacity: 1;
+}
+
+.rune-editor .rune-toggle[data-rune-toggle-expanded="false"] .rune-toggle-caret-icon {
+  transform: rotate(-90deg);
+}
+
+.rune-editor .rune-toggle > .rune-block-content > p,
+.rune-editor .rune-toggle > .rune-block-content > h2,
+.rune-editor .rune-toggle > .rune-block-content > h3,
+.rune-editor .rune-toggle > .rune-block-content > h4 {
+  margin: 0;
+  flex: 1 1 0px;
+  min-width: 1px;
+  padding-block: var(--rune-toggle-title-pad-y);
+  padding-inline-start: var(--rune-toggle-title-gap);
+}
+
+.rune-editor .rune-toggle-empty {
+  display: block;
+  width: auto;
+  background: transparent;
+  border: 0;
+  text-align: start;
+  padding: 4px 8px;
+  margin: 2px 0 2px calc(var(--rune-toggle-pad-inline) + var(--block-content-pad-x) + var(--rune-toggle-caret-box));
+  border-radius: 4px;
+  cursor: text;
+  color: var(--rune-toggle-empty-fg);
+  font: inherit;
+}
+
+.rune-editor .ProseMirror > .rune-block[data-rune-toggle-body="1"][data-depth="1"] {
+  padding-inline-start: calc(
+    var(--rune-toggle-pad-inline) +
+    var(--block-content-pad-x) +
+    var(--rune-toggle-caret-box) +
+    var(--rune-toggle-title-gap)
+  );
+}
+
+.rune-editor .rune-toggle-empty:hover {
+  background-color: var(--rune-toggle-caret-hover-bg);
+}

@@ -1,0 +1,105 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* Image block schema output:
+   .rune-block.rune-image > .rune-block-content > img | placeholder. */
+
+.rune-editor :is(.ProseMirror, .rune-column) > .rune-block.rune-image {
+  --block-pad-top: var(--rune-media-pad-top);
+  padding-top: var(--block-pad-top);
+  padding-bottom: 0.5rem;
+}
+
+.rune-editor .rune-block.rune-image {
+  position: relative;
+  /* Notion parity: media defaults to center. The content box is
+     inline-flex, so text-align places it without changing layout mode.
+     `align` attr "center" is the schema default and emits no data-attr. */
+  text-align: center;
+}
+
+.rune-editor .rune-block.rune-image[data-align="left"] {
+  text-align: left;
+}
+
+.rune-editor .rune-block.rune-image[data-align="right"] {
+  text-align: right;
+}
+
+.rune-editor .rune-block.rune-image > .rune-block-content {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+  padding: 0.25rem;
+  border-radius: var(--block-content-radius);
+}
+
+.rune-editor .rune-block.rune-image img[data-rune-image] {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: calc(var(--block-content-radius) - 2px);
+  /* Reset the .ProseMirror cursor:text inheritance: the image is an atom,
+     not a typing target. */
+  cursor: default;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.rune-editor .rune-block.rune-image-empty > .rune-block-content {
+  width: 100%;
+  min-height: 0;
+  align-items: center;
+  padding: 0;
+  border-radius: 10px;
+  background-color: var(--rune-source-empty-bg);
+  color: var(--muted-foreground);
+}
+
+.rune-editor .rune-image-empty-control {
+  display: flex;
+  width: 100%;
+  height: 49px;
+  align-items: center;
+  overflow: hidden;
+  /* placeholder-chrome padding — same value as --rune-media-pad-top by
+     coincidence, not tracking it */
+  padding: 0.75rem;
+  padding-inline-end: 2.25rem;
+  box-sizing: border-box;
+  border-radius: 10px;
+  color: var(--muted-foreground);
+  text-align: start;
+}
+
+.rune-editor .rune-image-empty-icon {
+  display: flex;
+  flex: 0 0 auto;
+  color: var(--muted-foreground);
+}
+
+.rune-editor .rune-image-empty-icon-svg {
+  display: block;
+  width: 1.5625rem;
+  height: 1.5625rem;
+  flex-shrink: 0;
+  /* icon-to-label gap — coincidental value, not tracking --rune-media-pad-top */
+  margin-inline-end: 0.75rem;
+  fill: currentColor;
+}
+
+.rune-editor .rune-image-empty-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.rune-editor .rune-block.rune-image > .rune-block-content[data-rune-resized] > img[data-rune-image] {
+  width: 100%;
+}

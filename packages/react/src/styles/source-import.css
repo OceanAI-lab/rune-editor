@@ -1,0 +1,138 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* Source import overlays are shared by image, video, and audio blocks. */
+
+.rune-source-import-overlay,
+.rune-image-import-overlay,
+.rune-media-import-overlay,
+[data-rune-source-import-overlay],
+[data-rune-image-import-overlay],
+[data-rune-media-import-overlay] {
+  position: absolute;
+  inset: var(--block-pad-top, 0) 0 0 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--background) 78%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.rune-source-import-panel,
+.rune-image-import-panel,
+.rune-media-import-panel {
+  display: flex;
+  min-width: min(280px, calc(100% - 24px));
+  max-width: calc(100% - 24px);
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in oklab, var(--foreground) 12%, transparent);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.rune-source-import-icon,
+.rune-image-import-icon,
+.rune-media-import-icon {
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--muted-foreground);
+  fill: currentColor;
+}
+
+.rune-source-import-title,
+.rune-image-import-title,
+.rune-media-import-title {
+  font-weight: 500;
+}
+
+.rune-source-import-shimmer,
+.rune-image-import-shimmer,
+.rune-media-import-shimmer {
+  width: 34px;
+  height: 22px;
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+  border-radius: 5px;
+  background:
+    linear-gradient(
+      100deg,
+      color-mix(in oklab, var(--muted) 70%, transparent) 30%,
+      color-mix(in oklab, var(--muted-foreground) 22%, transparent) 45%,
+      color-mix(in oklab, var(--muted) 70%, transparent) 60%
+    );
+  background-size: 220% 100%;
+  animation: rune-source-import-shimmer 1.15s ease-in-out infinite;
+}
+
+@keyframes rune-source-import-shimmer {
+  from { background-position: 120% 0; }
+  to { background-position: -120% 0; }
+}
+
+.rune-source-import-panel-error,
+.rune-image-import-panel-error,
+.rune-media-import-panel-error {
+  pointer-events: auto;
+}
+
+.rune-source-import-error-copy,
+.rune-image-import-error-copy,
+.rune-media-import-error-copy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.rune-source-import-text,
+.rune-image-import-text,
+.rune-media-import-text {
+  min-width: 0;
+}
+
+.rune-source-import-message,
+.rune-image-import-message,
+.rune-media-import-message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.rune-source-import-retry,
+.rune-image-import-retry,
+.rune-media-import-retry {
+  margin-inline-start: auto;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 6px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 7px 9px;
+}
+
+.rune-source-import-retry:hover,
+.rune-image-import-retry:hover,
+.rune-media-import-retry:hover {
+  background: color-mix(in oklab, var(--primary) 90%, white);
+}

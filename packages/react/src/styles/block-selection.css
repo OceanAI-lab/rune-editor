@@ -1,0 +1,79 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* Block selection fill — painted via a PM node decoration that adds
+   data-block-selected="true" to the rendered block DOM. We intentionally
+   do NOT rely on .ProseMirror-selectednode: PM only auto-applies it to
+   plain NodeSelection, not to custom Selection subclasses, so this
+   attribute path is the single render path for N=1..N ranges. */
+
+/* Inset halo, mirroring Notion's `.notion-selectable-halo` (position:
+   absolute; inset: 2px). Adjacent .rune-blocks butt edge-to-edge with
+   no margin between siblings — the base 2px inset keeps a standalone
+   selected pill from touching the block frame, and `.rune-block` is
+   already position: relative so ::before anchors correctly. The fill
+   token is translucent (20%) so layering on top of text reads fine.
+
+   Notion-style fusion: when two adjacent .rune-blocks are both
+   selected (list chain, toggle subtree, marquee over consecutive
+   blocks) the halos collapse into one continuous slab — see the
+   adjacency rules at the bottom of this block. The PM decoration
+   stays per-block; CSS does the visual joining.
+
+   The ::before is rendered on every .rune-block (not gated on the
+   selected attribute) so that toggling data-block-selected animates
+   `opacity` rather than appearing/disappearing the pseudo — matches
+   Notion's 200ms ease opacity transition on `.notion-selectable-halo`.
+   pointer-events: none keeps the always-present pseudo from
+   intercepting clicks, and the default opacity:0 means it costs only a
+   compositor layer when not selected. */
+.rune-editor .rune-block::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  background-color: var(--rune-block-selected-bg);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.rune-editor [data-block-selected="true"]::before {
+  opacity: 1;
+}
+
+/* Fuse adjacent selected blocks into one continuous slab (Notion
+   parity). Left/right inset stays so each block keeps its own indent
+   gutter; only the vertical seam between two selected siblings is
+   removed.
+
+   Lower edge of a block that has a selected neighbour directly below
+   it: drop the 2px bottom inset and the bottom-side radii so it meets
+   the next halo flush. */
+.rune-editor [data-block-selected="true"]:has(+ [data-block-selected="true"])::before {
+  bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Upper edge of a block that has a selected neighbour directly above
+   it: drop the 2px top inset and the top-side radii. The `+`
+   combinator is what guarantees adjacency — non-consecutive selected
+   blocks (e.g. a marquee that skips a row) stay as separate pills. */
+.rune-editor [data-block-selected="true"] + [data-block-selected="true"]::before {
+  top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.rune-marquee {
+  position: fixed;
+  z-index: var(--rune-z-drag-ghost);
+  box-sizing: border-box;
+  background: var(--rune-marquee-fill);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+}

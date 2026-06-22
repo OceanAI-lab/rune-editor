@@ -1,0 +1,74 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* Side menu — the + / grip pair that appears in the left gutter when
+   hovering a block. Rendered by SideMenu extension as a PM widget
+   decoration that lives INSIDE the hovered block's DOM; its left edge is
+   derived from the grip-center token plus the add button's footprint and
+   resolves against the block itself (every top-level block is position:
+   relative via editor-chrome.css). `top: var(--block-pad-top)` lines the
+   grip up with the block's first content line.
+
+   color binds --rune-gutter-fg, NEVER currentColor — so
+   block-level data-text-color / data-background-color can't tint the
+   gutter icons. */
+
+.rune-side-menu-host {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.rune-side-menu {
+  position: absolute;
+  top: var(--rune-side-menu-top, var(--block-pad-top, 0));
+  /* Notion-style: shift right by the hovered block's depth indent so the
+     grip sits just left of the block's CONTENT edge, not the layout's
+     leftmost column. --rune-block-depth is the inline style createSpec.ts
+     emits on every .rune-block; cascade lets the widget read it. Pairs
+     with #253 cursor-x indent picker: smaller horizontal distance from
+     grip to depth-N column = less arm travel to promote/demote. */
+  left: var(
+    --rune-side-menu-left,
+    calc(
+      var(--rune-block-depth, 0) * var(--rune-block-indent-step)
+      + var(--rune-side-menu-grip-offset) - 30px
+    )
+  );
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 1.5em;
+  user-select: none;
+  pointer-events: auto;
+  transform: var(--rune-side-menu-transform, none);
+  transition: opacity 300ms ease-in-out;
+  z-index: var(--rune-z-gutter, 20);
+  color: var(--rune-gutter-fg);
+}
+
+.rune-side-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 1px;
+  border: none;
+  background: transparent;
+  /* Faded variant of the bound token. Still not currentColor. */
+  color: color-mix(in oklab, var(--rune-gutter-fg) 45%, transparent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 300ms, color 300ms;
+}
+
+.rune-side-menu-btn:hover {
+  background: var(--rune-ghost-hover-bg);
+  color: var(--rune-gutter-fg);
+}
+
+.rune-side-menu-grip {
+  cursor: grab;
+}

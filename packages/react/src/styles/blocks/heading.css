@@ -1,0 +1,47 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* Heading block — owns all heading visuals: V1 font-size/weight, the
+   18px vertical rhythm override, and the block-color pill geometry.
+
+   UI H1/H2/H3/H4 render as <h2>/<h3>/<h4>/<h5> per CLAUDE.md invariant
+   #5 — the page reserves <h1> for the document title, so selectors
+   target the rendered HTML tag, not the UI label. Don't add an h1 rule:
+   it would target consumer page chrome (e.g. a sibling document title)
+   and never the editor's own headings.
+
+   Kept flat (no `@apply my-*`) because block rhythm lives on
+   .rune-editor .ProseMirror > .rune-block via padding, not per-tag
+   margin — see editor-chrome.css. */
+
+/* Font-size / weight per V1: UI H1/H2/H3 → <h2>/<h3>/<h4>. UI H4 (<h5>)
+   shares the H3 visual step — added for outline depth, not a new
+   rhythm step — so a single rule covers both. */
+.ProseMirror h2          { font-size: 1.875em; font-weight: 700; }   /* UI H1 */
+.ProseMirror h3          { font-size: 1.5em;   font-weight: 600; }   /* UI H2 */
+.ProseMirror :is(h4, h5) { font-size: 1.25em;  font-weight: 600; }   /* UI H3 / H4 */
+
+/* Heading vertical rhythm — V1 used 18px top / 6px bottom uniformly
+   across all heading levels. Override the universal 6/6 padding from
+   editor-chrome.css via --block-pad-top so the side-menu grip widget
+   stays aligned (it reads --block-pad-top via CSS cascade per the gutter contract). */
+.rune-editor :is(.ProseMirror, .rune-column) > .rune-block:not(.rune-toggle):has(> .rune-block-content > :is(h2, h3, h4, h5)) {
+  --block-pad-top: 18px;
+  padding-top: var(--block-pad-top);
+  padding-bottom: 6px;
+}
+
+/* Block-color pill — soft rounded rectangle that hugs the heading text
+   when the user picks a background color from the side menu. Geometry
+   lives on `--block-content-pad-x` / `--block-content-radius` tokens
+   (rune-tokens.css) so all participating blocks stay in sync; override
+   the tokens on a per-block selector when a single block needs a
+   different shape. data-background-color rides on .rune-block-content
+   so the pill paints there. */
+.rune-editor .rune-block:has(> .rune-block-content > :is(h2, h3, h4, h5)) > .rune-block-content {
+  padding-inline: var(--block-content-pad-x);
+  border-radius: var(--block-content-radius);
+}

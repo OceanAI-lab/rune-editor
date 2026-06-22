@@ -1,0 +1,50 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* Placeholder hint for empty editor blocks.
+
+   The core Placeholder plugin emits TWO decorations per empty focused
+   textblock:
+   - A node decoration on the outer .rune-block carrying
+     is-empty / data-placeholder / data-placeholder-type / -state attrs
+     (consumer-facing API, kept stable).
+   - A widget decoration <span.rune-placeholder> inside the textblock's
+     contentDOM, wrapping a <span.rune-placeholder-text contenteditable=
+     "false"> with the visible text. Living inside the contentDOM means
+     list blocks' flex layout puts the placeholder AFTER the marker /
+     checkbox instead of overlapping it.
+
+   The two-element shape (outer wrapper + inner ce=false span) is
+   load-bearing — see the JSDoc on the widget decoration in
+   placeholder/index.ts for why. The outer wrapper is what sits in the
+   inline flow, so the `float: left; height: 0` overlay trick lives
+   here; the inner span only carries the visible color/text styling and
+   the contenteditable=false that makes click/selection skip it.
+
+   `float: left; height: 0` is the v1-style overlay trick: the wrapper
+   occupies inline space for layout but takes zero vertical room, so the
+   caret sits on the same line. Heading typography is inherited from
+   the parent <h2/3/4> so no per-level rules are needed here. */
+
+.rune-placeholder {
+  float: left;
+  height: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.rune-placeholder-text {
+  color: var(--muted-foreground);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Strikethrough on the placeholder when a checked task block is empty,
+   matching the existing rule for real text in lists.css (`p` selector
+   misses the widget span). */
+.rune-task-list[data-checked="true"] .rune-block-content .rune-placeholder-text {
+  text-decoration: line-through;
+}

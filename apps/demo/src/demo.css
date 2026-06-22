@@ -1,0 +1,72 @@
+/* Minimal page shell. The page background/foreground (and the editor itself)
+   come from `@ocai/rune-react/style.css`: its base layer paints <body>
+   from the active theme's --background / --foreground tokens — exactly like the
+   playground, which sets no page background of its own. Don't override <body>
+   here (an unlayered rule would win over rune's @layer base and desync the
+   theme). Chrome below reads the same semantic tokens. */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.demo {
+  min-height: 100vh;
+}
+
+.demo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px 24px;
+}
+
+.demo-title {
+  font-weight: 650;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+.demo-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.demo-nav a {
+  color: var(--muted-foreground);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.demo-nav a:hover {
+  color: var(--foreground);
+}
+
+.demo-nav button {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--foreground);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.demo-nav button:hover {
+  border-color: var(--muted-foreground);
+}
+
+.demo-main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 8px 24px 160px;
+}

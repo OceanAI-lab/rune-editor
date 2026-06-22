@@ -1,0 +1,53 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+.rune-editor .rune-resize-host {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.rune-editor .ProseMirror[contenteditable="false"] .rune-resize-host {
+  display: none;
+}
+
+.rune-editor .rune-resize-handle {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  width: 15px;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  cursor: col-resize;
+  pointer-events: auto;
+}
+
+.rune-editor .rune-resize-handle--start {
+  inset-inline-start: 4px;
+}
+
+.rune-editor .rune-resize-handle--end {
+  inset-inline-end: 4px;
+}
+
+.rune-editor .rune-resize-pill {
+  width: 6px;
+  height: 48px;
+  max-height: 50%;
+  border: 1px solid var(--rune-resize-pill-border);
+  border-radius: 20px;
+  background: var(--rune-resize-pill-bg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease-in-out;
+}
+
+.rune-editor .rune-block-content:hover .rune-resize-pill,
+.rune-editor .rune-resize-handle[data-rune-resize-active] .rune-resize-pill {
+  opacity: 1;
+}

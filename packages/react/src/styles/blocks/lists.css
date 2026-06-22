@@ -1,0 +1,169 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+.rune-bullet-list .rune-block-content,
+.rune-numbered-list .rune-block-content,
+.rune-task-list .rune-block-content {
+  display: flex;
+  gap: var(--rune-list-gap);
+  align-items: baseline;
+}
+
+.rune-bullet-list .rune-block-content::before,
+.rune-numbered-list .rune-block-content::before {
+  flex: 0 0 var(--rune-list-indent);
+  user-select: none;
+  /* Center-align inside the 1.5em marker slot so the glyph reads as a
+   * "gutter affordance" rather than a number the user typed at the same
+   * column as paragraph text. Mirrors Notion's pattern (their pseudo
+   * marker uses `width: 24px; text-align: center`).
+   *
+   * lower-roman overrides this back to `start` below — Roman numerals
+   * (i, ii, iii, ..., viii, ix) have markedly variable widths, and
+   * left-anchoring keeps the marker's left edge column-stable across
+   * nesting depths so child markers line up with parent text columns
+   * regardless of glyph width. The other styles (decimal at typical
+   * depths 1–9, lower-alpha a–z, bullets) are roughly uniform-width and
+   * don't need the column anchor — center reads better there. */
+  text-align: center;
+}
+
+/* Variable-width marker exception: lower-roman keeps left-anchored so
+ * the marker's left edge stays at a fixed column across depths, even as
+ * the glyph grows from `i` to `viii`. Without this, deeper nests of a
+ * roman-numbered list would visually drift as the marker text widened.
+ * See the comment on the shared ::before rule above. */
+.rune-numbered-list[data-marker-style="lower-roman"] .rune-block-content::before {
+  text-align: start;
+}
+
+/* Let the paragraph fill the remaining row width so clicks past the
+ * text (the common "click trailing whitespace to keep typing" gesture)
+ * land on <p> and resolve to end-of-text. Without flex-grow, <p> is
+ * content-sized (flex: 0 1 auto) and the trailing empty space belongs
+ * to .rune-block-content — caretRangeFromPoint there resolves to offset
+ * 0 of the host and PM snaps the caret to the start of <p> instead of
+ * the end. min-width: 0 is the standard flex-item guard so a single
+ * unbreakable token can't blow out the row. */
+.rune-bullet-list .rune-block-content > p,
+.rune-numbered-list .rune-block-content > p,
+.rune-task-list .rune-block-content > p {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Bullet rows: scale • / ◦ / ▪ to 1.5em in Arial to match Notion's
+ * understated bullet (their pseudo carries `font-size: 1.5em` +
+ * `--pseudoBefore--fontFamily: Arial`). Arial wins over system-ui for
+ * cross-platform glyph metric stability — same on Mac/Win/Linux.
+ *
+ * The 1.5em glyph doesn't sit cleanly on the row's baseline, so:
+ *   1. Override .rune-block-content's `align-items: baseline` to
+ *      `flex-start` for bullet rows only (numbered/task keep baseline
+ *      since their markers are body-size).
+ *   2. Make the marker slot itself a centered inline-flex box of
+ *      `height: 1lh` — the bullet visually centers on the FIRST text
+ *      line, mirroring Notion's fixed-height marker box pinned to
+ *      flex-start.
+ */
+.rune-bullet-list .rune-block-content {
+  align-items: flex-start;
+}
+
+.rune-bullet-list .rune-block-content::before {
+  content: "•";
+  display: inline-flex;
+  align-items: center;
+  /* Center the bullet glyph in its slot — matches the numbered marker's
+   * `text-align: center` (text-align doesn't drive layout for an
+   * inline-flex parent, so we use justify-content for the same effect). */
+  justify-content: center;
+  height: 1lh;
+  font-size: 1.5em;
+  font-family: Arial, sans-serif;
+  line-height: 1;
+}
+
+.rune-bullet-list[data-marker-style="disc"] .rune-block-content::before { content: "•"; }
+.rune-bullet-list[data-marker-style="circle"] .rune-block-content::before { content: "◦"; }
+.rune-bullet-list[data-marker-style="square"] .rune-block-content::before { content: "▪"; }
+
+/* Fallback for the brief paint window between block creation and the first
+   decoration pass. */
+.rune-bullet-list:not([data-marker-style]) .rune-block-content::before { content: "•"; }
+
+.rune-numbered-list {
+  counter-reset: rune-li-counter var(--rune-list-index, 0);
+}
+
+.rune-numbered-list[data-marker-style="decimal"] .rune-block-content::before { content: counter(rune-li-counter, decimal) "."; }
+.rune-numbered-list[data-marker-style="lower-alpha"] .rune-block-content::before { content: counter(rune-li-counter, lower-alpha) "."; }
+.rune-numbered-list[data-marker-style="lower-roman"] .rune-block-content::before { content: counter(rune-li-counter, lower-roman) "."; }
+
+.rune-numbered-list:not([data-marker-style]) .rune-block-content::before { content: counter(rune-li-counter, decimal) "."; }
+
+.rune-task-checkbox {
+  position: relative;
+  flex: 0 0 1em;
+  width: 1em;
+  height: 1em;
+  margin: 0;
+  padding: 0;
+  border: 1px solid currentColor;
+  border-radius: 0.2em;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+  appearance: none;
+  cursor: pointer;
+}
+
+/* The list .rune-block-content uses `align-items: baseline` so all three
+ * list families (bullet / numbered / task) share the same alignment rule.
+ * Bullet/numbered markers are real text glyphs (•, 1.) so their baseline
+ * matches the paragraph's. The task checkbox is an empty <button>, whose
+ * default baseline is the box's bottom edge — that's why an unstyled
+ * checkbox sits visually low next to the text.
+ *
+ * Anchor the button's baseline higher by injecting a zero-width inline
+ * child: in baseline-aligned flex containers the item's baseline is its
+ * first inline child's baseline, and an inline-block's baseline is its
+ * own bottom. So a 0×0.8em ghost makes the button report its baseline at
+ * 0.8em from the top of its 1em box → checkbox center lands ≈ text
+ * x-height. 0.8em is font-tuned for Geist; tweak if we ever swap the
+ * default sans. */
+.rune-task-checkbox::after {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 0.8em;
+  vertical-align: baseline;
+}
+
+.rune-task-list[data-checked="true"] .rune-task-checkbox::before {
+  position: absolute;
+  inset: 0;
+  content: "✓";
+  display: grid;
+  place-items: center;
+  font-size: 0.8em;
+  line-height: 1;
+}
+
+.rune-task-list[data-checked="true"] .rune-block-content > p {
+  color: var(--rune-text-muted);
+  text-decoration: line-through;
+}
+
+/* Block-color pill — see blocks/heading.css for the rationale; reads
+   the shared --block-content-* tokens. Pill wraps the entire list row
+   (marker + content) since data-background-color rides on
+   .rune-block-content, which is the flex container above. */
+.rune-editor :is(.rune-bullet-list, .rune-numbered-list, .rune-task-list) > .rune-block-content {
+  padding-inline: var(--block-content-pad-x);
+  border-radius: var(--block-content-radius);
+}

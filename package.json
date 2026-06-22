@@ -1,0 +1,26 @@
+{
+  "name": "rune-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Rune editor. A Tiptap v3 / ProseMirror wrapper with product-grade block behaviors. Public packages live under packages/.",
+  "type": "module",
+  "license": "MPL-2.0",
+  "scripts": {
+    "build": "pnpm -r --filter \"./packages/*\" build",
+    "demo": "pnpm --filter demo dev",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "changeset": "changeset",
+    "release": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0",
+    "esbuild": "^0.28.0",
+    "typescript": "~5.6.0"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

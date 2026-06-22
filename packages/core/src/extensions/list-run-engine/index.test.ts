@@ -1,0 +1,219 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) 2026 Ocean AI, LLC
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+import { describe, expect, it } from "vitest"
+import { Schema, type Node as ProseMirrorNode } from "@tiptap/pm/model"
+
+import { computeListRuns } from "./index"
+
+const schema = new Schema({
+  nodes: {
+    doc: { content: "block*" },
+    text: { group: "inline" },
+    paragraph: {
+      group: "block",
+      attrs: { depth: { default: 0 } },
+      content: "inline*",
+    },
+    bulletList: {
+      group: "block",
+      attrs: { depth: { default: 0 } },
+      content: "inline*",
+    },
+    numberedList: {
+      group: "block",
+      attrs: {
+        depth: { default: 0 },
+        start: { default: null },
+      },
+      content: "inline*",
+    },
+  },
+})
+
+type BlockInput = {
+  type: "numberedList" | "bulletList" | "paragraph"
+  depth: number
+  attrs?: { start?: number | null }
+}
+
+function docFromBlocks(blocks: BlockInput[]): ProseMirrorNode {
+  return schema.node(
+    "doc",
+    null,
+    blocks.map((block) =>
+      schema.node(
+        block.type,
+        { depth: block.depth, ...block.attrs },
+        schema.text("x"),
+      ),
+    ),
+  )
+}
+
+function infosInOrder(doc: ProseMirrorNode) {
+  const info = computeListRuns(doc)
+  // Map iterates in insertion order, matching the doc walk.
+  return Array.from(info.byPos.values())
+}
+
+describe("computeListRuns — numbered indices + leader detection", () => {
+  it("flags the first numberedList at a depth as run leader", () => {
+    const doc = docFromBlocks([
+      { type: "numberedList", depth: 0 },
+      { type: "numberedList", depth: 0 },
+      { type: "numberedList", depth: 0 },
+    ])
+    const infos = infosInOrder(doc)
+    expect(infos.map((i) => i.isRunLeader)).toEqual([true, false, false])
+    expect(infos.map((i) => i.index)).toEqual([1, 2, 3])
+  })
+
+  it("honors leader's start=5 and continues from there", () => {
+    const doc = docFromBlocks([
+      { type: "numberedList", depth: 0, attrs: { start: 5 } },
+      { type: "numberedList", depth: 0 },
+      { type: "numberedList", depth: 0 },
+    ])
+    const infos = infosInOrder(doc)
+    expect(infos.map((i) => i.isRunLeader)).toEqual([true, false, false])
+    expect(infos.map((i) => i.index)).toEqual([5, 6, 7])
+  })
+
+  it("ignores non-leader start (mid-run start=5 does NOT jump the counter)", () => {
+    // The semantic flip vs. legacy test 4.1.g — see spec §7.
+    const doc = docFromBlocks([
+      { type: "numberedList", depth: 0 },
+      { type: "numberedList", depth: 0, attrs: { start: 5 } },
+      { type: "numberedList", depth: 0 },
+    ])
+    const infos = infosInOrder(doc)
+    expect(infos.map((i) => i.isRunLeader)).toEqual([true, false, false])
+    expect(infos.map((i) => i.index)).toEqual([1, 2, 3])
+  })
+
+  it("treats leader start=1 the same as start=null (1 is the default index)", () => {
+    const a = infosInOrder(
+      docFromBlocks([
+        { type: "numberedList", depth: 0, attrs: { start: 1 } },
+        { type: "numberedList", depth: 0 },
+      ]),
+    )
+    const b = infosInOrder(
+      docFromBlocks([
+        { type: "numberedList", depth: 0 },
+        { type: "numberedList", depth: 0 },
+      ]),
+    )
+    expect(a.map((i) => i.index)).toEqual([1, 2])
+    expect(b.map((i) => i.index)).toEqual([1, 2])
+  })
+
+  it("scenario-1 promote shape: [d=0, d=1, d=0(start=1), d=0] → [1, 1, 2, 3]", () => {
+    const doc = docFromBlocks([
+      { type: "numberedList", depth: 0 },
+      { type: "numberedList", depth: 1 },
+      { type: "numberedList", depth: 0, attrs: { start: 1 } },
+      { type: "numberedList", depth: 0 },
+    ])
+    const infos = infosInOrder(doc)
+    expect(infos.map((i) => i.index)).toEqual([1, 1, 2, 3])
+    expect(infos.map((i) => i.isRunLeader)).toEqual([true, true, false, false])
+  })
+
+  it("paragraph at same depth breaks the run; next numberedList is a new leader", () => {
+    const doc = docFromBlocks([
+      { type: "numberedList", depth: 0 },
+      { type: "paragraph", depth: 0 },
+      { type: "numberedList", depth: 0 },
+    ])
+    const numbered = infosInOrder(doc).filter((i) => i.kind === "numbered")
+    expect(numbered.map((i) => i.isRunLeader)).toEqual([true, true])
+    expect(numbered.map((i) => i.index)).toEqual([1, 1])
+  })
+
+  it("kind switch at same depth (numbered → bullet → numbered) restarts numbering", () => {
+    const doc = docFromBlocks([
+      { type: "numberedList", depth: 0 },
+      { type: "bulletList", depth: 0 },
+      { type: "numberedList", depth: 0 },
+    ])
+    const numbered = infosInOrder(doc).filter((i) => i.kind === "numbered")
+    expect(numbered.map((i) => i.isRunLeader)).toEqual([true, true])
+    expect(numbered.map((i) => i.index)).toEqual([1, 1])
+  })
+
+  it("nested numbered run at d=1 starts at 1 and outer d=0 resumes", () => {
+    const doc = docFromBlocks([
+      { type: "numberedList", depth: 0 },
+      { type: "numberedList", depth: 1 },
+      { type: "numberedList", depth: 1 },
+      { type: "numberedList", depth: 0 },
+    ])
+    const infos = infosInOrder(doc)
+    expect(infos.map((i) => i.index)).toEqual([1, 1, 2, 2])
+    expect(infos.map((i) => i.isRunLeader)).toEqual([true, true, false, false])
+  })
+})
+
+describe("computeListRuns — marker styles", () => {
+  it("3 nested numbered depths → decimal, lower-alpha, lower-roman", () => {
+    const doc = docFromBlocks([
+      { type: "numberedList", depth: 0 },
+      { type: "numberedList", depth: 1 },
+      { type: "numberedList", depth: 2 },
+    ])
+    expect(infosInOrder(doc).map((i) => i.markerStyle)).toEqual([
+      "decimal",
+      "lower-alpha",
+      "lower-roman",
+    ])
+  })
+
+  it("3 nested bullet depths → disc, circle, square", () => {
+    const doc = docFromBlocks([
+      { type: "bulletList", depth: 0 },
+      { type: "bulletList", depth: 1 },
+      { type: "bulletList", depth: 2 },
+    ])
+    expect(infosInOrder(doc).map((i) => i.markerStyle)).toEqual([
+      "disc",
+      "circle",
+      "square",
+    ])
+  })
+
+  it("bullets get no isRunLeader/index in v1", () => {
+    const doc = docFromBlocks([
+      { type: "bulletList", depth: 0 },
+      { type: "bulletList", depth: 0 },
+    ])
+    const infos = infosInOrder(doc)
+    expect(infos.map((i) => i.isRunLeader)).toEqual([undefined, undefined])
+    expect(infos.map((i) => i.index)).toEqual([undefined, undefined])
+  })
+})
+
+describe("computeListRuns — pos/nodeSize wiring", () => {
+  it("each entry's pos+nodeSize matches the underlying node's slot", () => {
+    const doc = docFromBlocks([
+      { type: "numberedList", depth: 0 },
+      { type: "paragraph", depth: 0 },
+      { type: "bulletList", depth: 0 },
+    ])
+    const info = computeListRuns(doc)
+    const positions: number[] = []
+    doc.forEach((node, offset) => {
+      if (node.type.name === "numberedList" || node.type.name === "bulletList") {
+        positions.push(offset)
+        const entry = info.byPos.get(offset)
+        expect(entry).toBeDefined()
+        expect(entry?.nodeSize).toBe(node.nodeSize)
+      }
+    })
+    expect(positions.length).toBeGreaterThan(0)
+  })
+})

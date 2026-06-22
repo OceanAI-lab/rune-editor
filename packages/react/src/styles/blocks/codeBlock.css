@@ -1,0 +1,57 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* M8.4b — code block: monospace background + padding.
+ *
+ * Outer .rune-block rhythm: 8px top / 8px bottom — matches Notion's
+ * .notion-code-block outer padding (8/8/8 in their HTML). Horizontal
+ * inline padding stays on the universal `.rune-block` 2px default
+ * (NOT 8px like Notion) because rune's paragraph-text edge already sits
+ * at x = 2 (outer) + 2 (inner content) = 4px from .rune-block left;
+ * landing the code card at the same x preserves the visible-edge
+ * alignment we wired in for table/codeblock. Notion's text edge in
+ * paragraphs also sits at 8px (their outer 8 + paragraph 0), so the
+ * "code edge = paragraph text edge" invariant holds on both sides at
+ * different absolute values.
+ *
+ * Side-menu grip continues to read --block-pad-top via the cascade
+ * (the gutter contract) — at 8px the grip sits on the code card's top edge,
+ * same visual relationship to the card as the prior 24px value. */
+.rune-editor .rune-block:has(> .rune-block-content > pre) {
+  --block-pad-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* Match the inline padding of paragraph / heading / list / blockquote so
+ * the code card's visible left/right edges line up with their text edges.
+ * Opts INTO the alignment padding only — no border-radius (pre owns its
+ * own card geometry with its own bg + radius below). */
+.rune-editor .rune-block:has(> .rune-block-content > pre) > .rune-block-content {
+  padding-inline: var(--block-content-pad-x);
+}
+
+.rune-editor pre {
+  background: var(--rune-code-block-bg);
+  /* Share the editor-wide pill radius token so the code card visually
+   * harmonises with bg-color pills on other blocks. Reusing the same
+   * var (not a separate --rune-code-block-radius) was a deliberate
+   * choice — one knob retuning all rounded surfaces. */
+  border-radius: var(--block-content-radius);
+  padding: 24px 22px;
+  font-family: var(--rune-font-mono);
+  font-size: 0.85em;
+  line-height: 1.5;
+  tab-size: 2;
+  white-space: break-spaces;
+  word-break: break-all;
+  margin: 0;
+}
+
+.rune-editor pre code {
+  background: transparent;
+  font: inherit;
+  padding: 0;
+}

@@ -1,0 +1,63 @@
+{
+  "name": "@ocai/rune-core",
+  "version": "0.12.2",
+  "description": "Headless Rune editor core. Tiptap schema, extensions, block API. No React, no UI.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@tiptap/extension-document": "^3.22.4",
+    "@tiptap/extension-heading": "^3.22.4",
+    "@tiptap/extension-history": "^3.22.4",
+    "@tiptap/extension-paragraph": "^3.22.4",
+    "@tiptap/extension-text": "^3.22.4",
+    "jsdom": "^25.0.0",
+    "typescript": "~5.6.0",
+    "vite": "^8.0.10",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^4.1.5"
+  },
+  "dependencies": {
+    "@tiptap/core": "^3.22.4",
+    "@tiptap/extension-horizontal-rule": "^3.22.4",
+    "@tiptap/extension-link": "^3.22.4",
+    "@tiptap/extension-text-style": "^3.22.4",
+    "@tiptap/extension-underline": "^3.22.4",
+    "@tiptap/pm": "^3.22.4",
+    "@tiptap/starter-kit": "^3.22.4",
+    "@tiptap/suggestion": "^3.22.4",
+    "nanoid": "^5.1.9",
+    "prosemirror-tables": "^1.6.4"
+  },
+  "license": "MPL-2.0",
+  "author": "Ocean AI, LLC <oss@oceanai.so>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OceanAI-lab/rune-editor.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/OceanAI-lab/rune-editor#readme",
+  "bugs": {
+    "url": "https://github.com/OceanAI-lab/rune-editor/issues"
+  }
+}

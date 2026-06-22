@@ -1,0 +1,146 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* Media blocks here means video/audio. Image block styles live in image.css. */
+
+.rune-editor :is(.ProseMirror, .rune-column) > .rune-block.rune-video,
+.rune-editor :is(.ProseMirror, .rune-column) > .rune-block.rune-audio,
+.rune-editor :is(.ProseMirror, .rune-column) > .rune-block > .rune-audio {
+  --block-pad-top: var(--rune-media-pad-top);
+  padding-top: var(--block-pad-top);
+  padding-bottom: 0.5rem;
+}
+
+.rune-editor .rune-block.rune-video,
+.rune-editor .rune-block.rune-audio {
+  position: relative;
+}
+
+/* Notion parity: video defaults to center; data-align left/right
+   override (see image.css for the same pattern). Audio renders
+   full-width and has no `align` attr. */
+.rune-editor .rune-block.rune-video {
+  text-align: center;
+}
+
+.rune-editor .rune-block.rune-video[data-align="left"] {
+  text-align: left;
+}
+
+.rune-editor .rune-block.rune-video[data-align="right"] {
+  text-align: right;
+}
+
+.rune-editor .rune-block.rune-video > .rune-block-content,
+.rune-editor .rune-block.rune-audio > .rune-block-content {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+  padding: 0.25rem;
+  border-radius: var(--block-content-radius);
+}
+
+/* audio[data-rune-audio] targets the native <audio controls> from core
+   renderDOM — invisible when the React AudioPlayer NodeView is active. */
+.rune-editor .rune-block.rune-video video[data-rune-video],
+.rune-editor .rune-block.rune-audio audio[data-rune-audio],
+.rune-editor .rune-block iframe[data-rune-media-embed] {
+  display: block;
+  max-width: 100%;
+  border: 0;
+  border-radius: calc(var(--block-content-radius) - 2px);
+}
+
+.rune-editor .rune-block.rune-video iframe[data-rune-media-embed] {
+  width: min(720px, 100%);
+  aspect-ratio: 16 / 9;
+}
+
+.rune-editor .rune-block.rune-video video[data-rune-video] {
+  width: min(720px, 100%);
+  height: auto;
+  background: var(--rune-video-letterbox-bg);
+}
+
+.rune-editor .rune-block.rune-audio iframe[data-rune-media-embed] {
+  width: min(720px, 100%);
+  height: 166px;
+}
+
+.rune-editor .rune-block.rune-media-empty > .rune-block-content {
+  width: 100%;
+  min-height: 0;
+  align-items: center;
+  padding: 0;
+  border-radius: 10px;
+  background-color: var(--rune-source-empty-bg);
+  color: var(--muted-foreground);
+}
+
+/* Filled audio keeps the pill chrome around our custom player.
+   :not(.rune-media-empty) hands the EMPTY state to the shared
+   .rune-media-empty rule above (Notion-style 10px full-width bar) —
+   without it this later equal-specificity rule wins and the empty
+   audio block renders as the old pill. */
+.rune-editor .rune-block.rune-audio:not(.rune-media-empty) > .rune-block-content {
+  width: 100%;
+  min-height: 0;
+  align-items: center;
+  padding: 0;
+  border-radius: 9999px;
+  background-color: var(--rune-source-empty-bg);
+  color: var(--muted-foreground);
+}
+
+.rune-editor .rune-media-empty-control {
+  display: flex;
+  width: 100%;
+  height: 49px;
+  align-items: center;
+  overflow: hidden;
+  /* placeholder-chrome padding — same value as --rune-media-pad-top by
+     coincidence, not tracking it */
+  padding: 0.75rem;
+  padding-inline-end: 2.25rem;
+  box-sizing: border-box;
+  border-radius: 10px;
+  color: var(--muted-foreground);
+  text-align: start;
+}
+
+.rune-editor .rune-media-empty-icon {
+  display: flex;
+  flex: 0 0 auto;
+  color: var(--muted-foreground);
+}
+
+.rune-editor .rune-media-empty-icon-svg {
+  display: block;
+  width: 1.5625rem;
+  height: 1.5625rem;
+  flex-shrink: 0;
+  /* icon-to-label gap — coincidental value, not tracking --rune-media-pad-top */
+  margin-inline-end: 0.75rem;
+  fill: currentColor;
+}
+
+.rune-editor .rune-media-empty-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.rune-editor .rune-block.rune-video > .rune-block-content[data-rune-resized] > video[data-rune-video],
+.rune-editor .rune-block.rune-video > .rune-block-content[data-rune-resized] > iframe[data-rune-media-embed] {
+  width: 100%;
+}
+
+.rune-editor .rune-block.rune-audio > .rune-block-content[data-rune-resized] [data-rune-audio-player] {
+  width: 100%;
+}

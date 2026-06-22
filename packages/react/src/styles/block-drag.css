@@ -1,0 +1,43 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* Block drag affordances.
+   - .rune-block-drag-ghost is a Decoration.node class on the source while
+     dragging. opacity (not display:none) keeps the source in layout so
+     siblings don't jump.
+   - .rune-block-drag-preview is the floating drag preview. It mounts inside
+     .rune-editor, walks the source's real DOM ancestor chain, and inherits
+     theme / CSS-var / scoped-selector context for free.
+   - .rune-drag-indicator is the drop-position line, rendered into the editor
+     viewport coord space by the drag gesture. */
+
+.rune-editor .ProseMirror .rune-block-drag-ghost {
+  opacity: 1;
+  transition: opacity 150ms;
+}
+
+.rune-drag-indicator {
+  background: var(--rune-indicator-bg);
+}
+
+.rune-editor .rune-block-drag-preview {
+  position: fixed;
+  pointer-events: none;
+  z-index: var(--rune-z-drag-ghost);
+  opacity: 0.65;
+}
+
+.rune-editor .rune-block-drag-preview [data-block-id] {
+  /* Top-level vertical margin neutralization. The preview is fixed-positioned;
+     the source's own margin-top would otherwise render as visible empty space
+     above the ghost. Descendant selector (not `> .ProseMirror > […]`) so this
+     keeps working when future blocks (list-item, table-row, …) sit under
+     intermediate parents — the walk-up clone reproduces those parents and
+     `[data-block-id]` always lands on the source clone wherever it is in the
+     chain. */
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
