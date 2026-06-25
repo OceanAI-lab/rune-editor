@@ -1004,6 +1004,8 @@ describe("openBlockActionsDropdown (non-grip chrome, e.g. media bar •••)",
     expect(ps?.dropdownBlockId).toBe(id)
     expect(ps?.anchorBlockId).toBe(id)
     expect(ps?.dropdownAnchor).toBe("media-bar")
+    // Live-rect anchors (grip / media-bar) carry no frozen rect.
+    expect(ps?.dropdownAnchorRect).toBeNull()
     editor.destroy()
   })
 
@@ -1045,6 +1047,48 @@ describe("openBlockActionsDropdown (non-grip chrome, e.g. media bar •••)",
     expect(sel).toBeInstanceOf(MultiBlockSelection)
     expect((sel as MultiBlockSelection).blockIndices).toEqual([5, 5])
     expect(blockSelectionKey.getState(editor.state)?.anchorBlockId).toBe(clickedId)
+    editor.destroy()
+  })
+})
+
+describe("openBlockActionsDropdown (toolbar ••• — frozen anchor rect)", () => {
+  it("threads the passed rect into plugin state alongside the toolbar anchor", () => {
+    const editor = makeEditor()
+    const id = editor.state.doc.child(2).attrs.id as string
+    // The inline toolbar unmounts the instant the block selection is set, so
+    // it ships a frozen viewport rect instead of a live-queryable element.
+    const rect = { top: 120, left: 40, width: 24, height: 0 }
+
+    expect(openBlockActionsDropdown(editor.view, id, "toolbar", rect)).toBe(true)
+
+    const sel = editor.state.selection
+    expect(sel).toBeInstanceOf(MultiBlockSelection)
+    expect((sel as MultiBlockSelection).blockIndices).toEqual([2, 2])
+    const ps = blockSelectionKey.getState(editor.state)
+    expect(ps?.dropdownBlockId).toBe(id)
+    expect(ps?.dropdownAnchor).toBe("toolbar")
+    expect(ps?.dropdownAnchorRect).toEqual(rect)
+    editor.destroy()
+  })
+
+  it("closing the dropdown resets the anchor to grip and drops the frozen rect", () => {
+    const editor = makeEditor()
+    const id = editor.state.doc.child(2).attrs.id as string
+    openBlockActionsDropdown(editor.view, id, "toolbar", {
+      top: 120,
+      left: 40,
+      width: 24,
+      height: 0,
+    })
+
+    editor.view.dispatch(
+      editor.state.tr.setMeta(blockSelectionKey, { closeDropdown: true }),
+    )
+
+    const ps = blockSelectionKey.getState(editor.state)
+    expect(ps?.dropdownBlockId).toBeNull()
+    expect(ps?.dropdownAnchor).toBe("grip")
+    expect(ps?.dropdownAnchorRect).toBeNull()
     editor.destroy()
   })
 })

@@ -30,6 +30,7 @@ import {
   useRef,
   useState,
   type ComponentType,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react"
 import type { Editor } from "@tiptap/core"
@@ -48,7 +49,10 @@ import "@tiptap/extension-underline"
 import "@tiptap/extension-strike"
 import "@tiptap/extension-code"
 import "@tiptap/extension-link"
-import { type ColorName } from "@ocai/rune-core"
+import {
+  openBlockActionsDropdown,
+  type ColorName,
+} from "@ocai/rune-core"
 import { Button } from "../components/ui/button"
 import {
   Popover,
@@ -600,7 +604,40 @@ export function InlineToolbar({
                 editor.commands.wrapSelectionAsInlineMath()
               }}
             />
-            <IconBtn icon={MoreHorizontalIcon} label="More options" />
+            <IconBtn
+              icon={MoreHorizontalIcon}
+              label="More options"
+              onClick={(e) => {
+                if (!currentBlockId) return
+                // Open the same block-actions dropdown the side-menu grip
+                // produces, anchored to THIS toolbar. Setting the block
+                // selection unmounts the toolbar (it gates on a
+                // TextSelection), so we capture a frozen anchor now — there's
+                // nothing live to re-query once we render.
+                //
+                // Vertical: anchor to the SELECTED TEXT's bottom, NOT the •••
+                // button (which sits a toolbar-row below the text). The
+                // dropdown adds its own small gap, so the menu lands just
+                // under the block — close to the text like Notion — regardless
+                // of how tall the toolbar is. Horizontal: keep the button's x
+                // so the menu stays right-aligned to the •••.
+                const btn = e.currentTarget.getBoundingClientRect()
+                const sel = range
+                  ? selectionAnchorRect(
+                      editor.view,
+                      range.from,
+                      range.to,
+                      range.head,
+                    )
+                  : null
+                openBlockActionsDropdown(editor.view, currentBlockId, "toolbar", {
+                  top: sel?.bottom ?? btn.top,
+                  left: btn.left,
+                  width: btn.width,
+                  height: 0,
+                })
+              }}
+            />
           </div>
           {linkPopover}
         </div>
@@ -657,7 +694,9 @@ interface IconBtnProps {
   icon: ComponentType<IconProps>
   label: string
   active?: boolean
-  onClick?: () => void
+  /** Receives the originating mouse event so callers can read the button rect
+   *  (e.g. the More button anchors the block-actions dropdown to itself). */
+  onClick?: (event: ReactMouseEvent<HTMLButtonElement>) => void
   /** Override the icon glyph size (default size-4.5). Merged over the default,
    *  so e.g. "size-5" nudges a single icon a touch larger. */
   iconClassName?: string
@@ -690,7 +729,7 @@ function IconBtn({
       )}
       onMouseDown={(e) => {
         e.preventDefault()
-        onClick?.()
+        onClick?.(e)
       }}
     >
       <Icon className={cn("size-4.5", iconClassName)} />

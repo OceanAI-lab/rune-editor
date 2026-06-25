@@ -374,7 +374,10 @@ export {
   blockSelectionCommands,
   openBlockActionsDropdown,
 } from "./extensions/block-selection"
-export type { BlockActionsDropdownAnchor } from "./extensions/block-selection"
+export type {
+  BlockActionsDropdownAnchor,
+  DropdownAnchorRect,
+} from "./extensions/block-selection"
 export { MultiBlockSelection } from "./extensions/block-selection/MultiBlockSelection"
 export { setMarqueeZone } from "./extensions/block-selection/marquee"
 

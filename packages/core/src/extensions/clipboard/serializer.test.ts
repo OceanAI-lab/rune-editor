@@ -52,4 +52,32 @@ describe("buildClipboardSerializer", () => {
       expect(dom.outerHTML).toBe("<p><strong>x</strong></p>")
     })
   })
+
+  // Regression guard: the to-do `clipboardRenderDOM` must actually survive
+  // ProseMirror's `renderSpec`. A bare content hole as a sibling of the
+  // <input> threw "Content hole must be the only child of its parent node"
+  // mid-serialize, crashing every Cmd-C / Copy-page over a range with a
+  // checkbox. A shape-only `toEqual` assertion (block.test.ts) cannot catch
+  // this — only running it through `serializeNode` does.
+  it("checked to-do serializes through renderSpec without throwing", () => {
+    withEditor((editor) => {
+      const ser = buildClipboardSerializer(editor)
+      const node = editor.schema.nodes.taskList!.create({ checked: true }, editor.schema.text("milk"))
+      const dom = ser.serializeNode(node) as HTMLElement
+      expect(dom.outerHTML).toBe(
+        '<ul><li><input type="checkbox" disabled="" checked=""> <span>milk</span></li></ul>',
+      )
+    })
+  })
+
+  it("unchecked to-do serializes through renderSpec (no checked attr)", () => {
+    withEditor((editor) => {
+      const ser = buildClipboardSerializer(editor)
+      const node = editor.schema.nodes.taskList!.create({ checked: false }, editor.schema.text("eggs"))
+      const dom = ser.serializeNode(node) as HTMLElement
+      expect(dom.outerHTML).toBe(
+        '<ul><li><input type="checkbox" disabled=""> <span>eggs</span></li></ul>',
+      )
+    })
+  })
 })

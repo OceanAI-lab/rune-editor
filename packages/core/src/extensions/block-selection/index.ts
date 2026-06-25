@@ -16,6 +16,7 @@ export { openBlockActionsDropdown } from "./plugin"
 export type {
   BlockActionsDropdownAnchor,
   BlockSelectionPluginState,
+  DropdownAnchorRect,
 } from "./plugin"
 export { MultiBlockSelection } from "./MultiBlockSelection"
 // Re-export the value so its `declare module "@tiptap/core"` augmentation

@@ -263,7 +263,12 @@ export const TaskList = createBlockSpec({
         },
       ],
       " ",
-      0,
+      // The content hole must be the only child of its immediate parent
+      // (ProseMirror `renderSpec` rule), so it cannot sit as a sibling of
+      // the <input>/space inside <li> — wrap it in a <span>. Emitting a
+      // bare `0` here throws RangeError mid-serialization, which crashes
+      // the whole clipboard write (any Cmd-C over a range with a to-do).
+      ["span", {}, 0],
     ],
   ],
   nodeView: ({ node, editor, HTMLAttributes }) => {

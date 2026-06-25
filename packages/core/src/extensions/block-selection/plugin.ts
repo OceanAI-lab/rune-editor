@@ -17,15 +17,34 @@ import { MultiBlockSelection } from "./MultiBlockSelection"
 import { isDragging } from "../block-drag/BlockDrag"
 
 /** Which chrome surface the open dropdown is anchored to: the side-menu
- *  grip (default) or the media floating bar's `•••` button. The React
- *  dropdown reads this to pick the anchor rect; the menu content is
- *  identical either way. */
-export type BlockActionsDropdownAnchor = "grip" | "media-bar"
+ *  grip (default), the media floating bar's `•••` button, or the inline
+ *  toolbar's `•••` ("More options"). The React dropdown reads this to pick
+ *  the anchor rect; the menu content is identical either way.
+ *
+ *  `grip` / `media-bar` anchor to a persistent in-document DOM element, so
+ *  the dropdown re-reads their rect live. `toolbar` anchors to the inline
+ *  toolbar's button, which unmounts the instant we set the block selection
+ *  (the toolbar gates on a TextSelection) — so the opener captures the
+ *  button rect up front and ships it as `dropdownAnchorRect`. */
+export type BlockActionsDropdownAnchor = "grip" | "media-bar" | "toolbar"
+
+/** A frozen viewport rect (getBoundingClientRect shape) for anchors whose
+ *  source element does not persist after the dropdown opens — see the
+ *  `toolbar` case on {@link BlockActionsDropdownAnchor}. */
+export type DropdownAnchorRect = {
+  top: number
+  left: number
+  width: number
+  height: number
+}
 
 export type BlockSelectionPluginState = {
   anchorBlockId: string | null
   dropdownBlockId: string | null
   dropdownAnchor: BlockActionsDropdownAnchor
+  /** Frozen anchor rect for non-persistent anchors (`toolbar`); null when the
+   *  anchor is read live from the DOM (`grip` / `media-bar`) or closed. */
+  dropdownAnchorRect: DropdownAnchorRect | null
 }
 
 export type BlockSelectionPluginMeta = {
@@ -33,6 +52,8 @@ export type BlockSelectionPluginMeta = {
   openDropdownFor?: string  // set when grip click should open the dropdown
   /** Anchor surface for openDropdownFor; defaults to "grip" when omitted. */
   dropdownAnchor?: BlockActionsDropdownAnchor
+  /** Frozen rect to anchor to, for `dropdownAnchor: "toolbar"`. */
+  dropdownAnchorRect?: DropdownAnchorRect | null
   closeDropdown?: true       // set when dropdown is closing (Esc / outside-click / item pick)
 }
 
@@ -42,6 +63,7 @@ const INITIAL: BlockSelectionPluginState = {
   anchorBlockId: null,
   dropdownBlockId: null,
   dropdownAnchor: "grip",
+  dropdownAnchorRect: null,
 }
 
 // Map a dragSourceRange (PM position range) to top-level child indices.
@@ -234,6 +256,7 @@ export function openBlockActionsDropdown(
   view: EditorView,
   blockId: string,
   anchor: BlockActionsDropdownAnchor = "grip",
+  anchorRect: DropdownAnchorRect | null = null,
 ): boolean {
   const doc = view.state.doc
   const resolved = resolveBodyBlockById(doc, blockId)
@@ -273,6 +296,7 @@ export function openBlockActionsDropdown(
         setAnchor: anchorId,
         openDropdownFor: blockId,
         dropdownAnchor: anchor,
+        dropdownAnchorRect: anchorRect,
       }),
   )
   return true
@@ -395,9 +419,11 @@ export function blockSelectionPlugin(): Plugin<BlockSelectionPluginState> {
         // doc-change auto-clear runs last so a setMeta in the same tr wins.
         let nextDropdown = prev.dropdownBlockId
         let nextDropdownAnchor = prev.dropdownAnchor
+        let nextDropdownAnchorRect = prev.dropdownAnchorRect
         if (meta?.openDropdownFor) {
           nextDropdown = meta.openDropdownFor
           nextDropdownAnchor = meta.dropdownAnchor ?? "grip"
+          nextDropdownAnchorRect = meta.dropdownAnchorRect ?? null
         }
         if (meta?.closeDropdown) nextDropdown = null
         if (tr.docChanged && nextDropdown) {
@@ -407,7 +433,10 @@ export function blockSelectionPlugin(): Plugin<BlockSelectionPluginState> {
           // backfill elsewhere) and prematurely close the dropdown.
           if (resolveBodyBlockById(newState.doc, nextDropdown) == null) nextDropdown = null
         }
-        if (nextDropdown === null) nextDropdownAnchor = "grip"
+        if (nextDropdown === null) {
+          nextDropdownAnchor = "grip"
+          nextDropdownAnchorRect = null
+        }
 
         // Selection transition clears anchor if we're no longer in block mode.
         const inBlockMode = newState.selection instanceof MultiBlockSelection
@@ -416,6 +445,7 @@ export function blockSelectionPlugin(): Plugin<BlockSelectionPluginState> {
             anchorBlockId: null,
             dropdownBlockId: nextDropdown,
             dropdownAnchor: nextDropdownAnchor,
+            dropdownAnchorRect: nextDropdownAnchorRect,
           }
         }
 
@@ -425,6 +455,7 @@ export function blockSelectionPlugin(): Plugin<BlockSelectionPluginState> {
             anchorBlockId: meta.setAnchor ?? null,
             dropdownBlockId: nextDropdown,
             dropdownAnchor: nextDropdownAnchor,
+            dropdownAnchorRect: nextDropdownAnchorRect,
           }
         }
 
@@ -433,6 +464,7 @@ export function blockSelectionPlugin(): Plugin<BlockSelectionPluginState> {
           anchorBlockId: prev.anchorBlockId,
           dropdownBlockId: nextDropdown,
           dropdownAnchor: nextDropdownAnchor,
+          dropdownAnchorRect: nextDropdownAnchorRect,
         }
       },
     },

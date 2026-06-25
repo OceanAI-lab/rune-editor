@@ -45,7 +45,9 @@ import {
   MultiBlockSelection,
   blockSelectionKey,
   getBlockSpecs,
+  type BlockActionsDropdownAnchor,
   type ColorName,
+  type DropdownAnchorRect,
 } from "@ocai/rune-core"
 import { Popover, PopoverAnchor, PopoverContent } from "../components/ui/popover"
 import { useStableVirtualElement } from "../components/ui/useStableVirtualElement"
@@ -106,10 +108,14 @@ interface MbsRead {
 interface BlockActionsSnapshot {
   dropdownBlockId: string | null
   mbs: MbsRead
-  /** Which element the dropdown anchors to — the grip by default, or the media
-   *  floating bar's `•••` when opened from there (plugin `dropdownAnchor`). The
-   *  rect itself is read live by `gripAnchor` (findAnchorRect), not snapshotted. */
-  anchorKind: "grip" | "media-bar"
+  /** Which element the dropdown anchors to — the grip by default, the media
+   *  floating bar's `•••`, or the inline toolbar's `•••` (plugin
+   *  `dropdownAnchor`). For grip / media-bar the rect is read live by
+   *  `gripAnchor` (findAnchorRect); for `toolbar` it's the frozen
+   *  `dropdownAnchorRect` (the toolbar button is gone by the time we render). */
+  anchorKind: BlockActionsDropdownAnchor
+  /** Frozen anchor rect, set only for `anchorKind: "toolbar"`. */
+  anchorRect: DropdownAnchorRect | null
 }
 
 interface BlockActionContext {
@@ -140,6 +146,11 @@ const DEFAULT_BLOCK_ACTION_SECTION: BlockActionSection = {
   actions: [],
 }
 
+/** Gap (px) between the selected text's bottom and the dropdown when opened
+ *  from the inline toolbar's `•••`. Small so the menu hugs the block, the way
+ *  Notion drops its selection menu close to the text. */
+const TOOLBAR_MENU_GAP = 8
+
 const CONTENT_ATTR = "data-rune-block-actions-content"
 const SUBMENU_ATTR = "data-rune-block-actions-submenu"
 const SUBTRIGGER_ATTR = "data-rune-block-actions-subtrigger"
@@ -155,7 +166,7 @@ export function BlockActionsDropdown({
   buildBlockLink,
   onCopyLink,
 }: BlockActionsDropdownProps) {
-  const { dropdownBlockId, mbs, anchorKind } = useRuneEditorState(
+  const { dropdownBlockId, mbs, anchorKind, anchorRect } = useRuneEditorState(
     editor,
     readBlockActionsSnapshot,
     {
@@ -170,10 +181,25 @@ export function BlockActionsDropdown({
   const lastGripRectRef = useRef<DOMRect | null>(null)
   const gripAnchor = useCallback<RuneAnchor>(() => {
     if (!dropdownBlockId) return lastGripRectRef.current
+    // `toolbar` anchors to a frozen rect captured at open time — its source
+    // button (the inline toolbar's `•••`) has already unmounted, so there's
+    // nothing live to re-query.
+    if (anchorKind === "toolbar") {
+      const rect = anchorRect
+        ? new DOMRect(
+            anchorRect.left,
+            anchorRect.top,
+            anchorRect.width,
+            anchorRect.height,
+          )
+        : lastGripRectRef.current
+      if (rect) lastGripRectRef.current = rect
+      return rect
+    }
     const rect = findAnchorRect(editor, dropdownBlockId, anchorKind)
     if (rect) lastGripRectRef.current = rect
     return rect ?? lastGripRectRef.current
-  }, [editor, dropdownBlockId, anchorKind])
+  }, [editor, dropdownBlockId, anchorKind, anchorRect])
   gripAnchor.contextElement = editorViewDom(editor)
   const gripVirtualRef = useStableVirtualElement(gripAnchor)
 
@@ -330,8 +356,12 @@ export function BlockActionsDropdown({
       <PopoverAnchor virtualRef={gripVirtualRef} />
       <PopoverContent
         side="bottom"
-        align={anchorKind === "media-bar" ? "end" : "start"}
-        sideOffset={6}
+        align={anchorKind === "grip" ? "start" : "end"}
+        // grip / media-bar drop 6px below their (persistent) anchor. The
+        // toolbar anchor is a zero-height line at the selected text's bottom
+        // (frozen in InlineToolbar), so this gap is measured straight from the
+        // block — tune it to sit the menu closer to / further from the text.
+        sideOffset={anchorKind === "toolbar" ? TOOLBAR_MENU_GAP : 6}
         collisionPadding={8}
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
@@ -415,6 +445,7 @@ function readBlockActionsSnapshot(editor: Editor): BlockActionsSnapshot {
       dropdownBlockId: null,
       mbs: { blockStartPositions: [], firstPos: null },
       anchorKind: "grip",
+      anchorRect: null,
     }
   }
 
@@ -425,6 +456,7 @@ function readBlockActionsSnapshot(editor: Editor): BlockActionsSnapshot {
     dropdownBlockId,
     mbs: readMbs(editor),
     anchorKind,
+    anchorRect: ps?.dropdownAnchorRect ?? null,
   }
 }
 
@@ -435,7 +467,22 @@ function sameBlockActionsSnapshot(
   return (
     a.dropdownBlockId === b.dropdownBlockId &&
     a.anchorKind === b.anchorKind &&
+    sameAnchorRect(a.anchorRect, b.anchorRect) &&
     sameMbsRead(a.mbs, b.mbs)
+  )
+}
+
+function sameAnchorRect(
+  a: DropdownAnchorRect | null,
+  b: DropdownAnchorRect | null,
+): boolean {
+  if (a === b) return true
+  if (!a || !b) return false
+  return (
+    a.top === b.top &&
+    a.left === b.left &&
+    a.width === b.width &&
+    a.height === b.height
   )
 }
 

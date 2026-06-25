@@ -492,13 +492,13 @@ describe("TaskList block — clipboard", () => {
         {},
         ["input", { type: "checkbox", disabled: "", checked: "" }],
         " ",
-        0,
+        ["span", {}, 0],
       ],
     ])
     expect(taskStorage(editor).clipboardRenderDOM?.({ node: uncheckedNode })).toEqual([
       "ul",
       {},
-      ["li", {}, ["input", { type: "checkbox", disabled: "" }], " ", 0],
+      ["li", {}, ["input", { type: "checkbox", disabled: "" }], " ", ["span", {}, 0]],
     ])
 
     editor.destroy()
