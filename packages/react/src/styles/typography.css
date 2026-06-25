@@ -21,6 +21,55 @@
   cursor: pointer;
 }
 
+/* Inline `code` mark — distinct from the codeBlock block, whose
+   `<pre><code>` is styled in blocks/codeBlock.css. Notion-style monospace
+   pill: faint neutral bg, a code-specific red fg, small rounded padding,
+   nudged up 0.065em to optically centre the mono glyphs. `:not(pre code)`
+   keeps every rule off the code block's inner <code>.
+
+   Code is registered at low priority (kit.ts) so the mark nests INNER of any
+   inline color mark — `<span data-text-color/-background-color><code>…`. The
+   two override rules then let an outer color span win: text color flows in
+   via `inherit`, and clearing the code's own bg lets the outer
+   background-color span fill the whole pill (padding included).
+
+   Both override rules are scoped to `span[data-…-color]` ON PURPOSE: an inline
+   color mark is always a <span>, whereas BLOCK-level color renders the same
+   `data-text-color` / `data-background-color` attrs onto `.rune-block-content`
+   (a div, an ANCESTOR of the code). Without the `span` qualifier a block-level
+   colour would also strip the code's red / clear its pill — and the radius
+   compensation below (which is span-scoped) wouldn't fire, leaving inline code
+   inside a coloured block as bare text with no pill. */
+.rune-editor code:not(pre code) {
+  font-family: var(--rune-font-mono);
+  font-size: 85%;
+  line-height: normal;
+  color: var(--rune-inline-code-fg);
+  background: var(--rune-inline-code-bg);
+  border-radius: var(--rune-inline-code-radius);
+  padding: 0.2em 0.4em;
+  position: relative;
+  bottom: 0.065em;
+}
+
+.rune-editor span[data-text-color] code:not(pre code) {
+  color: inherit;
+}
+
+/* Background-color override: clear the code's own bg so only the chosen
+   colour paints. That fill lives on the OUTER inline color span (rendered by
+   the textStyle mark — always a <span>, never the block-level
+   .rune-block-content), so the pill radius has to move there too or the
+   override loses its rounded corners. The span tightly wraps the code, so
+   its background box matches the code's box and the radii line up. */
+.rune-editor span[data-background-color] code:not(pre code) {
+  background: transparent;
+}
+
+.rune-editor span[data-background-color]:has(code:not(pre code)) {
+  border-radius: var(--rune-inline-code-radius);
+}
+
 .rune-editor ::selection {
   background: var(--rune-text-selection-bg);
 }

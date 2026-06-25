@@ -140,6 +140,20 @@
      contrasted code card. */
   --rune-code-block-bg: color-mix(in oklab, var(--foreground) 5%, var(--background));
   --rune-font-mono: SFMono-Regular, Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace;
+
+  /* Inline `code` mark (the mark, NOT the codeBlock block). Notion-style
+     pill: a faint neutral fill + a code-specific red. Both are theme-
+     invariant — the bg is a low-alpha gray that reads on light and dark,
+     and the fg follows Notion's inline-code red (#eb5757), which is a
+     brighter, distinct red from the palette `data-text-color="red"`
+     (--rune-color-red-fg). Both yield to an explicit inline color mark —
+     see the override rules in typography.css. */
+  --rune-inline-code-fg: #eb5757;
+  --rune-inline-code-bg: rgba(135, 131, 120, 0.15);
+  /* Pill radius. Used twice (typography.css): on the code element itself,
+     and — when an inline background-color wraps the code — on the outer
+     color span, which is what actually paints the fill in that case. */
+  --rune-inline-code-radius: 4px;
   position: relative;
 }
 

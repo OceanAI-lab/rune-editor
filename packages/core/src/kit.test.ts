@@ -145,3 +145,52 @@ describe("createRuneKit plugins", () => {
     editor.destroy()
   })
 })
+
+describe("createRuneKit code mark (re-registered: low priority + narrowed excludes)", () => {
+  function makeEditor() {
+    return new Editor({
+      element: document.createElement("div"),
+      extensions: createRuneKit(),
+    })
+  }
+
+  it("code coexists with formatting/colour marks but still excludes link/wikiLink/internalRef", () => {
+    const editor = makeEditor()
+    const m = editor.schema.marks
+
+    // StarterKit's Code is `excludes: "_"` (excludes EVERY mark). Ours narrows
+    // that to navigation/reference marks only, so a code span can now also be
+    // bold/italic/strike/underline and carry an inline colour (textStyle) —
+    // matching Notion. These are the marks code must now tolerate:
+    expect(m.code!.excludes(m.bold!)).toBe(false)
+    expect(m.code!.excludes(m.italic!)).toBe(false)
+    expect(m.code!.excludes(m.strike!)).toBe(false)
+    expect(m.code!.excludes(m.underline!)).toBe(false)
+    expect(m.code!.excludes(m.textStyle!)).toBe(false)
+
+    // Preserved guarantee: a verbatim code span still cannot ALSO be a
+    // link / wikiLink / internalRef (these stay mutually exclusive).
+    expect(m.code!.excludes(m.link!)).toBe(true)
+    expect(m.code!.excludes(m.wikiLink!)).toBe(true)
+    expect(m.code!.excludes(m.internalRef!)).toBe(true)
+
+    editor.destroy()
+  })
+
+  it("applying bold then code leaves BOTH marks on the text (coexist end-to-end)", () => {
+    const editor = makeEditor()
+    editor.commands.setContent("<p>hello</p>")
+    editor.commands.setTextSelection({ from: 1, to: 6 })
+    editor.commands.setMark("bold")
+    editor.commands.setMark("code")
+
+    const names = new Set<string>()
+    editor.state.doc.descendants((node) => {
+      if (node.isText) node.marks.forEach((mk) => names.add(mk.type.name))
+    })
+    expect(names.has("bold")).toBe(true)
+    expect(names.has("code")).toBe(true)
+
+    editor.destroy()
+  })
+})

@@ -5,6 +5,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import StarterKit from "@tiptap/starter-kit"
+import Code from "@tiptap/extension-code"
 import Underline from "@tiptap/extension-underline"
 import Link, { isAllowedUri, type LinkOptions } from "@tiptap/extension-link"
 import { RUNE_BODY_BLOCKS, deriveBlockIdTypes, isFactoryBuiltBlockExtension, MediaImport, MediaPopover } from "./blocks"
@@ -387,8 +388,15 @@ export function createRuneKit(options: CreateRuneKitOptions = {}): AnyExtension[
       // flip mark nesting (#88) — that override is silently dropped if
       // StarterKit's copy is registered first (Tiptap dedupes by name
       // and keeps the first). Disable the bundled ones so ours win.
+      //
+      // Code gets the same treatment: StarterKit's Code is `excludes: "_"`
+      // (excludes ALL marks) + default priority, so it can neither carry an
+      // inline color nor nest inside a color span. We re-register it below
+      // with a low priority (inner nesting, like Link) and a narrowed
+      // `excludes` so the code mark can coexist with textStyle/colour.
       underline: false,
       link: false,
+      code: false,
     }),
     ...bodyBlocks,
     ...pluginBlocks,
@@ -428,8 +436,9 @@ export function createRuneKit(options: CreateRuneKitOptions = {}): AnyExtension[
 
   // Inline marks for the formatting toolbar (M4 toolbar UI). StarterKit
   // bundles Bold/Italic/Strike/Code/Underline/Link — we keep its
-  // Bold/Italic/Strike/Code as-is and disable underline/link in the
-  // StarterKit config above, then register our own copies here. Link is
+  // Bold/Italic/Strike as-is, re-register Code with a priority/excludes
+  // override (below), and disable underline/link/code in the StarterKit
+  // config above, then register our own copies here. Link is
   // configured for the default safe-href set (http/https/mailto/tel)
   // and openOnClick:false because the LinkHoverCard / consumer app
   // handles navigation, not PM.
@@ -445,6 +454,16 @@ export function createRuneKit(options: CreateRuneKitOptions = {}): AnyExtension[
   extensions.push(
     EntityRefs,
     Underline,
+    // Code, re-registered (StarterKit's copy disabled above). Priority 50
+    // (below textStyle's 101) makes it render INNER of an inline color span
+    // — `<span data-text-color="…"><code>…</code></span>` — mirroring the
+    // Link #88 fix, so typography.css can flow the chosen colour through the
+    // code mark. `excludes` is narrowed from Tiptap's blanket "_" to the
+    // navigation/reference marks only: a verbatim code span still cannot
+    // also be a link/wikiLink/internalRef (preserves existing behaviour +
+    // tests), but it CAN now carry bold/italic/strike/underline and an
+    // inline colour, matching Notion.
+    Code.extend({ priority: 50, excludes: "link wikiLink internalRef" }),
     RuneLink.configure({
       openOnClick: false,
       autolink: true,
