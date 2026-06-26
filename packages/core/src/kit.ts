@@ -8,7 +8,7 @@ import StarterKit from "@tiptap/starter-kit"
 import Code from "@tiptap/extension-code"
 import Underline from "@tiptap/extension-underline"
 import Link, { isAllowedUri, type LinkOptions } from "@tiptap/extension-link"
-import { RUNE_BODY_BLOCKS, deriveBlockIdTypes, isFactoryBuiltBlockExtension, MediaImport, MediaPopover } from "./blocks"
+import { RUNE_BODY_BLOCKS, deriveBlockIdTypes, isFactoryBuiltBlockExtension, MediaImport, MediaPopover, CalloutEmojiPopover } from "./blocks"
 import type { RuneImportImageFile, RuneImportImageUrl, RuneImportMediaFile, RuneImportMediaUrl } from "./blocks"
 import { InlineMath, type InlineNodeViewFactory } from "./inlines"
 import {
@@ -408,6 +408,7 @@ export function createRuneKit(options: CreateRuneKitOptions = {}): AnyExtension[
       importImageUrl: options.importImageUrl,
     }),
     MediaPopover,
+    CalloutEmojiPopover,
     InlineMath.configure({ nodeView: options.mathNodeViews?.inlineMath }),
     BlockCommands,
     BlockId.configure({ types: blockIdTypes }),

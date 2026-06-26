@@ -26,40 +26,41 @@
 
 :root {
   /* fg — theme-invariant. */
-  --rune-color-gray-fg:   rgb(125, 122, 118);
-  --rune-color-brown-fg:  rgb(152, 120,  94);
-  --rune-color-orange-fg: rgb(198, 127,  63);
-  --rune-color-yellow-fg: rgb(195, 150,  71);
-  --rune-color-green-fg:  rgb( 97, 147, 113);
-  --rune-color-blue-fg:   rgb( 74, 124, 195);
-  --rune-color-purple-fg: rgb(147, 109, 176);
-  --rune-color-pink-fg:   rgb(179,  84, 136);
-  --rune-color-red-fg:    rgb(192,  89,  78);
+  --rune-color-gray-fg:   rgb(125, 122, 117);
+  --rune-color-brown-fg:  rgb(159, 118,  90);
+  --rune-color-orange-fg: rgb(210, 123,  45);
+  --rune-color-yellow-fg: rgb(203, 148,  52);
+  --rune-color-green-fg:  rgb( 80, 148, 110);
+  --rune-color-blue-fg:   rgb( 56, 125, 201);
+  --rune-color-purple-fg: rgb(154, 107, 180);
+  --rune-color-pink-fg:   rgb(193,  76, 138);
+  --rune-color-red-fg:    rgb(207,  81,  72);
 
-  /* bg-light — derived. 14% fg + 86% white fits all 9 Notion light bg
-     values with ≤4 RGB error. To globally tune light-bg saturation,
-     change this single percentage. */
-  --rune-color-gray-bg-light:   color-mix(in srgb, var(--rune-color-gray-fg)   14%, white);
-  --rune-color-brown-bg-light:  color-mix(in srgb, var(--rune-color-brown-fg)  14%, white);
-  --rune-color-orange-bg-light: color-mix(in srgb, var(--rune-color-orange-fg) 14%, white);
-  --rune-color-yellow-bg-light: color-mix(in srgb, var(--rune-color-yellow-fg) 14%, white);
-  --rune-color-green-bg-light:  color-mix(in srgb, var(--rune-color-green-fg)  14%, white);
-  --rune-color-blue-bg-light:   color-mix(in srgb, var(--rune-color-blue-fg)   14%, white);
-  --rune-color-purple-bg-light: color-mix(in srgb, var(--rune-color-purple-fg) 14%, white);
-  --rune-color-pink-bg-light:   color-mix(in srgb, var(--rune-color-pink-fg)   14%, white);
-  --rune-color-red-bg-light:    color-mix(in srgb, var(--rune-color-red-fg)    14%, white);
+  /* bg-light — explicit, measured from Notion (2026-06-26). Notion hand-tunes
+     these per channel; a single fg→white tint can't reproduce them (e.g. blue's
+     blue channel is barely lightened while its red channel tints ~13%), so we
+     store the measured values rather than derive them. */
+  --rune-color-gray-bg-light:   rgb(240, 239, 237);
+  --rune-color-brown-bg-light:  rgb(245, 237, 233);
+  --rune-color-orange-bg-light: rgb(251, 235, 222);
+  --rune-color-yellow-bg-light: rgb(249, 243, 220);
+  --rune-color-green-bg-light:  rgb(232, 241, 236);
+  --rune-color-blue-bg-light:   rgb(229, 242, 252);
+  --rune-color-purple-bg-light: rgb(243, 235, 249);
+  --rune-color-pink-bg-light:   rgb(250, 233, 241);
+  --rune-color-red-bg-light:    rgb(252, 233, 231);
 
-  /* bg-dark — explicit. Notion hand-tunes these; no formula fits across
-     all 9 colors (verified per-color in HSL — hues match, L/S diverge). */
+  /* bg-dark — explicit, measured from Notion (2026-06-26). Notion hand-tunes
+     these; no formula fits across all 9 colors (hues match, L/S diverge). */
   --rune-color-gray-bg-dark:   rgb(56, 56, 54);
-  --rune-color-brown-bg-dark:  rgb(67, 55, 46);
-  --rune-color-orange-bg-dark: rgb(79, 55, 35);
-  --rune-color-yellow-bg-dark: rgb(78, 69, 41);
-  --rune-color-green-bg-dark:  rgb(43, 61, 49);
-  --rune-color-blue-bg-dark:   rgb(40, 56, 78);
-  --rune-color-purple-bg-dark: rgb(58, 46, 70);
-  --rune-color-pink-bg-dark:   rgb(73, 45, 60);
-  --rune-color-red-bg-dark:    rgb(75, 46, 42);
+  --rune-color-brown-bg-dark:  rgb(69, 54, 45);
+  --rune-color-orange-bg-dark: rgb(83, 54, 31);
+  --rune-color-yellow-bg-dark: rgb(80, 68, 37);
+  --rune-color-green-bg-dark:  rgb(38, 61, 48);
+  --rune-color-blue-bg-dark:   rgb(35, 56, 80);
+  --rune-color-purple-bg-dark: rgb(60, 45, 71);
+  --rune-color-pink-bg-dark:   rgb(78, 43, 60);
+  --rune-color-red-bg-dark:    rgb(80, 44, 41);
 
   /* bg — semantic, theme-aware. Defaults to light. */
   --rune-color-gray-bg:   var(--rune-color-gray-bg-light);

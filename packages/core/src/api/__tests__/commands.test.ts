@@ -53,6 +53,7 @@ describe("commands.insertBlocks", () => {
       | { type: "numberedList"; id?: string; depth?: number; text: string; start: number | null }
       | { type: "taskList"; id?: string; depth?: number; text: string; checked: boolean }
       | { type: "blockquote"; id?: string; depth?: number; text: string }
+      | { type: "callout"; id?: string; depth?: number; icon: string; text: string }
       | { type: "codeBlock"; id?: string; depth?: number; text: string; language: string | null }
       | {
           type: "table"

@@ -1,0 +1,100 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (c) 2026 Ocean AI, LLC
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/* Callout — Notion-parity boxed block: a rounded, tinted container with a
+ * leading emoji and inline body text.
+ *
+ * Metrics measured from Notion Cloud via DevTools (getComputedStyle):
+ *   box        border-radius 10px · border 1px solid transparent · padding 12px
+ *   outer      8px top / 8px bottom rhythm around the box
+ *   icon       24px box · emoji 21.6px (=1.35em @16px) · line-height 1
+ *   gap        ~8px from emoji to first word (icon→text)
+ *   default bg gray (Notion's --c-graBacSec ≈ our --rune-color-gray-bg) */
+
+.rune-editor {
+  --rune-callout-icon-box: 24px;
+  --rune-callout-emoji-size: 1.35em; /* 21.6px at the 16px editor base */
+  --rune-callout-gap: 8px;
+  --rune-callout-radius: 10px;
+  --rune-callout-pad: 12px;
+  /* Vertical inset around the body text. Notion's callout body is a nested
+   * text-block whose own padding (textInner 6px + leaf 2px = 8px each side)
+   * makes a single line 40px tall — so a one-line callout box is 66px, not
+   * 50px. We reproduce that 8px here so the height matches pixel-for-pixel.
+   * The icon's margin-top below is bound to the SAME token so the 24px emoji
+   * box overlays the first 24px text line exactly. */
+  --rune-callout-content-pad-y: 8px;
+}
+
+/* Outer block rhythm. Notion wraps the box in 8px top/bottom padding — same
+ * recipe as our code block. --block-pad-top feeds the side-menu grip via the
+ * cascade (the gutter contract); at 8px the grip sits on the box's top edge. Inline
+ * padding stays the universal 6px so the box — inset by --block-content-pad-x
+ * below — lands its left edge at 8px, the same x as paragraph text and the
+ * code card. */
+.rune-editor :is(.ProseMirror, .rune-column) > .rune-block.rune-callout {
+  --block-pad-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* The colored box IS .rune-block-content, so the side-menu background-color
+ * palette (data-background-color rides here) tints the box for free and the
+ * light/dark flip comes along. */
+.rune-editor .rune-callout > .rune-block-content {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--rune-callout-gap);
+  margin-inline: var(--block-content-pad-x);
+  padding: var(--rune-callout-pad);
+  border: 1px solid transparent; /* Notion: 1px solid transparent */
+  border-radius: var(--rune-callout-radius);
+}
+
+/* Default (no explicit bg color) == Notion's gray callout. Guarded with
+ * :not([data-background-color]) so an explicit palette pick — whose rule is
+ * only (0,2,0) in color-palette.css — still wins instead of being shadowed by
+ * this (0,4,0) selector. */
+.rune-editor .rune-callout > .rune-block-content:not([data-background-color]) {
+  background-color: var(--rune-color-gray-bg);
+}
+
+/* Leading emoji. Fixed 24px box == the body's line-height; with the box on
+ * align-items:flex-start and margin-top bound to the content's top padding,
+ * the 24px emoji box lands exactly over the first 24px text line (margin-top
+ * == padding-top, same height → centers coincide). This stays aligned to the
+ * FIRST line as the body wraps to multiple lines, matching Notion's fixed
+ * icon margin-top. */
+.rune-editor .rune-callout-icon {
+  flex: 0 0 auto;
+  width: var(--rune-callout-icon-box);
+  height: var(--rune-callout-icon-box);
+  margin-top: var(--rune-callout-content-pad-y);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--rune-callout-emoji-size);
+  line-height: 1;
+  user-select: none;
+  -webkit-user-select: none;
+  /* Click target for the emoji picker (Notion: 0.25em-radius hover chip). */
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 120ms ease-out;
+}
+
+.rune-editor .rune-callout-icon:hover {
+  background-color: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+/* Body text column — fills the remaining width and wraps. min-width:0 lets
+ * long unbreakable strings shrink instead of blowing out the flex row. The
+ * 8px vertical padding reproduces Notion's nested text-block inset so a
+ * single line is 40px tall (→ 66px box, → 82px outer block). */
+.rune-editor .rune-callout-content {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-block: var(--rune-callout-content-pad-y);
+}

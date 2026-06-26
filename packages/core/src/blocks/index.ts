@@ -25,6 +25,15 @@ export type { RuneTaskListBlock } from "./TaskList/block"
 export { Blockquote } from "./Blockquote/block"
 export type { RuneBlockquoteBlock } from "./Blockquote/block"
 
+export { Callout } from "./Callout/block"
+export type { RuneCalloutBlock } from "./Callout/block"
+export {
+  CalloutEmojiPopover,
+  calloutEmojiPopoverPluginKey,
+  getCalloutEmojiPopoverBlockId,
+} from "./Callout/emoji-popover-plugin"
+export type { CalloutEmojiPopoverState } from "./Callout/emoji-popover-plugin"
+
 export { CodeBlock } from "./CodeBlock/block"
 export type { RuneCodeBlock } from "./CodeBlock/block"
 
@@ -122,6 +131,7 @@ import type { RuneBulletListBlock } from "./BulletList/block"
 import type { RuneNumberedListBlock } from "./NumberedList/block"
 import type { RuneTaskListBlock } from "./TaskList/block"
 import type { RuneBlockquoteBlock } from "./Blockquote/block"
+import type { RuneCalloutBlock } from "./Callout/block"
 import type { RuneCodeBlock } from "./CodeBlock/block"
 import type { RuneTableBlock } from "./Table/block"
 import type { RuneToggleBlock } from "./Toggle/block"
@@ -143,6 +153,7 @@ export type RuneBlock =
   | RuneNumberedListBlock
   | RuneTaskListBlock
   | RuneBlockquoteBlock
+  | RuneCalloutBlock
   | RuneCodeBlock
   | RuneTableBlock
   | RuneToggleBlock

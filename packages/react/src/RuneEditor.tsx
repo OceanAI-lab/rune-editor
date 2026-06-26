@@ -23,6 +23,7 @@ import {
 import { TableActionsDropdown } from "./table-actions"
 import { MediaFloatingBar } from "./media-bar"
 import { SourceBlockPopover } from "./blocks/media"
+import { CalloutEmojiPicker } from "./blocks/callout/CalloutEmojiPicker"
 import {
   BlockLinkPasteMenu,
   useInternalRefClick,
@@ -92,6 +93,14 @@ export interface RuneEditorProps extends UseRuneEditorOptions {
    *  "Edit with AI" / quick-action entry without rebuilding the toolbar.
    *  Ignored when `inlineToolbar` is `false` (you own the toolbar). */
   renderInlineToolbarSection?: RenderInlineToolbarSection
+  /**
+   * Base URL for the Emojibase JSON data, forwarded to the built-in
+   * `CalloutEmojiPicker` (the callout icon picker is mounted internally, so
+   * this is the only way for a host to point it at a self-hosted copy).
+   * Defaults to the jsdelivr CDN — set this when the host can't reach it
+   * (e.g. an Electron renderer with a strict `connect-src 'self'` CSP). See
+   * {@link EmojiPickerProps.emojibaseUrl}. */
+  emojibaseUrl?: string
 }
 
 // v0.2 RuneEditor is intentionally bare: no toolbar, no menus. Those
@@ -148,6 +157,7 @@ function RuneEditorInternal(
     openRef,
     inlineToolbar,
     renderInlineToolbarSection,
+    emojibaseUrl,
     ...options
   } = props
   const mergedPlaceholders = useMemo<PlaceholderConfig>(
@@ -179,6 +189,7 @@ function RuneEditorInternal(
       openRef={openRef}
       inlineToolbar={inlineToolbar}
       renderInlineToolbarSection={renderInlineToolbarSection}
+      emojibaseUrl={emojibaseUrl}
     >
       {children}
     </RuneEditorSurface>
@@ -205,6 +216,7 @@ function RuneEditorSurface(props: RuneEditorSurfaceProps) {
     openRef,
     inlineToolbar = true,
     renderInlineToolbarSection,
+    emojibaseUrl,
   } = props
 
   const readyEditorRef = useRef<Editor | null>(null)
@@ -246,6 +258,9 @@ function RuneEditorSurface(props: RuneEditorSurfaceProps) {
       )}
       {editor && <LinkHoverCard editor={editor} />}
       {editor && <SourceBlockPopover editor={editor} />}
+      {editor && (
+        <CalloutEmojiPicker editor={editor} emojibaseUrl={emojibaseUrl} />
+      )}
       {editor && <MediaFloatingBar editor={editor} />}
       {editor && <TableActionsDropdown editor={editor} />}
       {editor && (

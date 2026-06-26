@@ -65,7 +65,18 @@
   --block-pad-top: 3px;
   padding-top: var(--block-pad-top);
   padding-bottom: 3px;
-  padding-inline: 2px;
+  /* Box inset DERIVED from the public --rune-block-inset (8px — the content-left
+     target that matches Notion's per-block wrapper and the toggle's own
+     --rune-toggle-pad-inline) minus the 2px --block-content-pad-x = 6px, so
+     every top-level block's content-left lands at exactly --rune-block-inset.
+     One source of truth means a host can align its own chrome to body text via
+     var(--rune-block-inset). This makes the toggle caret sit flush with body
+     text, the way Notion aligns them. Padding (not margin) keeps each block's
+     BOX flush to the .ProseMirror left edge so the gutter-hover probe at
+     editorRect.left+1 still resolves into a block via posAtCoords. Nested
+     blocks ([data-depth]) override padding-inline-start below with their depth
+     indent, so this only moves depth-0 blocks. */
+  padding-inline: calc(var(--rune-block-inset) - var(--block-content-pad-x));
 }
 
 /* Per-depth left padding driven by the inline `--rune-block-depth`

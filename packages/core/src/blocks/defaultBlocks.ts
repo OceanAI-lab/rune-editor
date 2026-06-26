@@ -17,6 +17,7 @@ import { BulletList } from "./BulletList/block"
 import { NumberedList } from "./NumberedList/block"
 import { TaskList } from "./TaskList/block"
 import { Blockquote } from "./Blockquote/block"
+import { Callout } from "./Callout/block"
 import { CodeBlock } from "./CodeBlock/block"
 import { Toggle } from "./Toggle/block"
 import { Table } from "./Table/block"
@@ -54,6 +55,7 @@ export const RUNE_BODY_BLOCKS = [
   NumberedList,
   TaskList,
   Blockquote,
+  Callout,
   CodeBlock,
   Toggle,
   Table,

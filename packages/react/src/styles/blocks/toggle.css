@@ -13,7 +13,19 @@
 }
 
 .rune-editor :is(.ProseMirror, .rune-column) > .rune-block.rune-toggle {
-  --block-pad-top: 1px;
+  /* Symmetric 6px top/bottom (matches Notion, and rune's own paragraph
+     rhythm) so the caret + title row is VERTICALLY CENTERED in the block.
+     The caret box and the title line are each 28px tall (24 + 2+2), so the
+     block is 6 + 28 + 6 = 40px and the row centers at 20px == block center.
+     An earlier 1px top left the row 2.5px above center (top-heavy) and broke
+     pixel-parity with Notion. */
+  --block-pad-top: 6px;
+  /* The side-menu grip aligns via `top: var(--block-pad-top)`, but the caret
+     and the title both sit --rune-toggle-title-pad-y BELOW that (the caret's
+     margin-block, the title's padding-block). Push the grip down by the same
+     amount so grip-center == caret-center == title-center (== 20px from block
+     top). Same escape hatch toc/divider use. */
+  --rune-side-menu-top: calc(var(--block-pad-top) + var(--rune-toggle-title-pad-y));
   padding-top: var(--block-pad-top);
   padding-bottom: 6px;
   padding-inline: var(--rune-toggle-pad-inline);

@@ -73,7 +73,15 @@ function createBlockColorAttribute(kind: ColorKind): Attributes[string] {
     default: null,
     keepOnSplit: false,
     parseHTML: (element) => {
-      const wrapper = element.closest(".rune-block-content")
+      // The color data-attr rides on `.rune-block-content`. Most blocks'
+      // parse rules match an element AT or BELOW that wrapper (e.g. <p>),
+      // so `closest` walks up to it. Blocks whose rule matches the OUTER
+      // `.rune-block` instead (callout — its rule keys on the icon attr that
+      // lives on the outer div) need a downward fallback to the direct-child
+      // wrapper; `:scope >` keeps it from reaching into a nested block.
+      const wrapper =
+        element.closest(".rune-block-content") ??
+        element.querySelector(":scope > .rune-block-content")
       const raw =
         wrapper?.getAttribute(dataAttr) ??
         element.getAttribute(dataAttr) ??

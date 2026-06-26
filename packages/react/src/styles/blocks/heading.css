@@ -4,8 +4,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-/* Heading block — owns all heading visuals: V1 font-size/weight, the
-   18px vertical rhythm override, and the block-color pill geometry.
+/* Heading block — owns all heading visuals: per-level font-size/weight,
+   the graduated vertical-rhythm override, and the block-color pill geometry.
 
    UI H1/H2/H3/H4 render as <h2>/<h3>/<h4>/<h5> per CLAUDE.md invariant
    #5 — the page reserves <h1> for the document title, so selectors
@@ -17,21 +17,42 @@
    .rune-editor .ProseMirror > .rune-block via padding, not per-tag
    margin — see editor-chrome.css. */
 
-/* Font-size / weight per V1: UI H1/H2/H3 → <h2>/<h3>/<h4>. UI H4 (<h5>)
-   shares the H3 visual step — added for outline depth, not a new
-   rhythm step — so a single rule covers both. */
-.ProseMirror h2          { font-size: 1.875em; font-weight: 700; }   /* UI H1 */
-.ProseMirror h3          { font-size: 1.5em;   font-weight: 600; }   /* UI H2 */
-.ProseMirror :is(h4, h5) { font-size: 1.25em;  font-weight: 600; }   /* UI H3 / H4 */
+/* Font-size / weight: UI H1/H2/H3/H4 → <h2>/<h3>/<h4>/<h5>. Every heading
+   level shares font-weight 600 and line-height 1.3 — Notion's authored
+   values for in-content headings (only the 40px page TITLE is 700, and
+   that's host chrome, not an editor heading). Weight + line-height live in
+   one shared rule; font-size steps per level. UI H4 (<h5>) now gets its
+   OWN step (1.125em / 18px) to match Notion's distinct Heading 4 — it no
+   longer clones H3's step. */
+.ProseMirror :is(h2, h3, h4, h5) { font-weight: 600; line-height: 1.3; }
+.ProseMirror h2 { font-size: 1.875em; }   /* UI H1 */
+.ProseMirror h3 { font-size: 1.5em;   }   /* UI H2 */
+.ProseMirror h4 { font-size: 1.25em;  }   /* UI H3 */
+.ProseMirror h5 { font-size: 1.125em; }   /* UI H4 */
 
-/* Heading vertical rhythm — V1 used 18px top / 6px bottom uniformly
-   across all heading levels. Override the universal 6/6 padding from
-   editor-chrome.css via --block-pad-top so the side-menu grip widget
-   stays aligned (it reads --block-pad-top via CSS cascade per the gutter contract). */
+/* Heading vertical rhythm — graduated top padding so larger headings get
+   more air above them and read as section breaks (vs the old flat 18px).
+   Values are Notion's measured per-level totals: its outer-wrapper
+   padding-top PLUS the 2px leaf inner padding it stacks on every block —
+   UI H1 32 / H2 28 / H3 24 / H4 20. Bottom stays 6. Overrides the universal
+   3/3 from editor-chrome.css via --block-pad-top so the side-menu grip
+   widget stays aligned (it reads --block-pad-top via CSS cascade per the gutter contract). One block matches exactly one level, so the four
+   per-level rules never conflict. */
 .rune-editor :is(.ProseMirror, .rune-column) > .rune-block:not(.rune-toggle):has(> .rune-block-content > :is(h2, h3, h4, h5)) {
-  --block-pad-top: 18px;
   padding-top: var(--block-pad-top);
   padding-bottom: 6px;
+}
+.rune-editor :is(.ProseMirror, .rune-column) > .rune-block:not(.rune-toggle):has(> .rune-block-content > h2) {
+  --block-pad-top: 32px;
+}
+.rune-editor :is(.ProseMirror, .rune-column) > .rune-block:not(.rune-toggle):has(> .rune-block-content > h3) {
+  --block-pad-top: 28px;
+}
+.rune-editor :is(.ProseMirror, .rune-column) > .rune-block:not(.rune-toggle):has(> .rune-block-content > h4) {
+  --block-pad-top: 24px;
+}
+.rune-editor :is(.ProseMirror, .rune-column) > .rune-block:not(.rune-toggle):has(> .rune-block-content > h5) {
+  --block-pad-top: 20px;
 }
 
 /* Block-color pill — soft rounded rectangle that hugs the heading text

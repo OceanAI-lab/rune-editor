@@ -16,23 +16,24 @@ export type NamedColorEntry = {
    *  Rendered colors in light/dark live in color-palette.css; these stay
    *  theme-invariant so paste semantics are stable across modes.
    *
-   *  fg = canonical fg per Notion (same in light + dark — verified 2026-04-27).
-   *  bg = canonical dark bg per Notion. Light-mode bg pastes have lower
-   *       precision (light bg = ~14% fg + 86% white; closest fg-channel
-   *       proximity wins). */
+   *  fg = canonical fg per Notion (same in light + dark — verified 2026-06-26).
+   *  bg = canonical dark bg per Notion (measured 2026-06-26). Light-mode bg
+   *       pastes match against this dark reference too (lower precision;
+   *       closest fg-channel proximity wins). Render-time light/dark bg
+   *       values live in color-palette.css. */
   fg: string
   bg: string
 }
 
 export const COLORS: Record<ColorName, NamedColorEntry> = {
   default: { label: "Default", fg: "inherit",            bg: "transparent" },
-  gray:    { label: "Gray",    fg: "rgb(125, 122, 118)", bg: "rgb(56, 56, 54)" },
-  brown:   { label: "Brown",   fg: "rgb(152, 120, 94)",  bg: "rgb(67, 55, 46)" },
-  orange:  { label: "Orange",  fg: "rgb(198, 127, 63)",  bg: "rgb(79, 55, 35)" },
-  yellow:  { label: "Yellow",  fg: "rgb(195, 150, 71)",  bg: "rgb(78, 69, 41)" },
-  green:   { label: "Green",   fg: "rgb(97, 147, 113)",  bg: "rgb(43, 61, 49)" },
-  blue:    { label: "Blue",    fg: "rgb(74, 124, 195)",  bg: "rgb(40, 56, 78)" },
-  purple:  { label: "Purple",  fg: "rgb(147, 109, 176)", bg: "rgb(58, 46, 70)" },
-  pink:    { label: "Pink",    fg: "rgb(179, 84, 136)",  bg: "rgb(73, 45, 60)" },
-  red:     { label: "Red",     fg: "rgb(192, 89, 78)",   bg: "rgb(75, 46, 42)" },
+  gray:    { label: "Gray",    fg: "rgb(125, 122, 117)", bg: "rgb(56, 56, 54)" },
+  brown:   { label: "Brown",   fg: "rgb(159, 118, 90)",  bg: "rgb(69, 54, 45)" },
+  orange:  { label: "Orange",  fg: "rgb(210, 123, 45)",  bg: "rgb(83, 54, 31)" },
+  yellow:  { label: "Yellow",  fg: "rgb(203, 148, 52)",  bg: "rgb(80, 68, 37)" },
+  green:   { label: "Green",   fg: "rgb(80, 148, 110)",  bg: "rgb(38, 61, 48)" },
+  blue:    { label: "Blue",    fg: "rgb(56, 125, 201)",  bg: "rgb(35, 56, 80)" },
+  purple:  { label: "Purple",  fg: "rgb(154, 107, 180)", bg: "rgb(60, 45, 71)" },
+  pink:    { label: "Pink",    fg: "rgb(193, 76, 138)",  bg: "rgb(78, 43, 60)" },
+  red:     { label: "Red",     fg: "rgb(207, 81, 72)",   bg: "rgb(80, 44, 41)" },
 }

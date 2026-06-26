@@ -29,6 +29,7 @@ describe("RUNE_BODY_BLOCKS", () => {
       "numberedList",
       "taskList",
       "blockquote",
+      "callout",
       "codeBlock",
       "toggle",
       "table",
@@ -56,7 +57,7 @@ describe("RUNE_BODY_BLOCKS", () => {
   it("derives BlockId types from configured factory-built blocks", () => {
     const configured = RUNE_BODY_BLOCKS.map((ext) => ext.configure({}))
     const types = deriveBlockIdTypes(configured)
-    expect(types).toHaveLength(16)
+    expect(types).toHaveLength(17)
     expect(types).toContain("paragraph")
     expect(types).toContain("table")
     expect(types).toContain("columnLayout")
@@ -83,6 +84,7 @@ describe("RUNE_BODY_BLOCKS", () => {
       "numberedList",
       "taskList",
       "blockquote",
+      "callout",
       "codeBlock",
       "toggle",
       "table",

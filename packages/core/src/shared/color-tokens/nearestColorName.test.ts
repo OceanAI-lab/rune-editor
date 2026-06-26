@@ -44,6 +44,20 @@ describe("nearestColorName", () => {
     const r = nearestColorName("#000000", "text")
     expect(r).not.toBe("default")
   })
+
+  // Perceptual (L*a*b*) matching, not raw RGB L2: a light, slightly red-leaning
+  // blue must stay blue and not straddle into purple just because the palette
+  // blue is darker. Regression for the re-measured palette (b8f85d8).
+  it("maps a light red-leaning blue to blue, not purple", () => {
+    expect(nearestColorName("#83abe1", "text")).toBe("blue")
+  })
+
+  // Same hue, different value: brown is a dark/desaturated orange. Lightness
+  // (L*) must keep them apart.
+  it("separates brown from orange by lightness", () => {
+    expect(nearestColorName(COLORS.brown.fg, "text")).toBe("brown")
+    expect(nearestColorName(COLORS.orange.fg, "text")).toBe("orange")
+  })
 })
 
 describe("nearestColorName is theme-invariant", () => {

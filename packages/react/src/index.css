@@ -35,6 +35,7 @@
 @import "./styles/blocks/divider.css";
 @import "./styles/blocks/lists.css";
 @import "./styles/blocks/blockquote.css";
+@import "./styles/blocks/callout.css";
 @import "./styles/blocks/codeBlock.css";
 @import "./styles/blocks/table.css";
 @import "./styles/blocks/toggle.css";

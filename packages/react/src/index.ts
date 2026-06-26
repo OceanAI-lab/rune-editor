@@ -179,6 +179,8 @@ export type { RuneAnchor, PointAnchorOptions } from "./positioning"
 
 export { MediaSourcePopover, SourceBlockPopover } from "./blocks/media"
 export type { MediaSourcePopoverProps, SourceBlockPopoverProps } from "./blocks/media"
+export { CalloutEmojiPicker } from "./blocks/callout/CalloutEmojiPicker"
+export type { CalloutEmojiPickerProps } from "./blocks/callout/CalloutEmojiPicker"
 export { ImageEmptyPopover } from "./blocks/image"
 export type { ImageEmptyPopoverProps } from "./blocks/image"
 export { AudioPlayer, audioBlockReactNodeView } from "./blocks/audio"

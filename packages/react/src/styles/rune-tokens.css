@@ -31,6 +31,20 @@
    screenshot of the table border) was wrong on all channels. */
 :root {
   --editor-accent: oklch(60.58% 0.1674 252.7);
+  /* On :root (like --editor-accent above) so host chrome OUTSIDE .rune-editor
+     can read it — e.g. a page-title row, which per the doc-level title contract is host-owned
+     and renders as a SIBLING of the editor, not inside it, so it can't inherit
+     a .rune-editor-scoped token.
+
+     This is the left offset where a top-level block's CONTENT begins, measured
+     from the editor's left edge: the block box `padding-inline` PLUS
+     --block-content-pad-x. The single source of truth for body-text alignment
+     — the block `padding-inline` (editor-chrome.css) DERIVES from it via calc,
+     and a host aligns its own chrome to body text with
+     `padding-inline: var(--rune-block-inset)` instead of hardcoding the number.
+     Matches Notion's 8px. (Retune on a shared ancestor, not on .rune-editor, or
+     host chrome reading the :root value would drift from the editor's blocks.) */
+  --rune-block-inset: 8px;
 }
 
 .rune-editor {
