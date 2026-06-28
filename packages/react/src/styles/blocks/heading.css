@@ -34,13 +34,15 @@
    more air above them and read as section breaks (vs the old flat 18px).
    Values are Notion's measured per-level totals: its outer-wrapper
    padding-top PLUS the 2px leaf inner padding it stacks on every block —
-   UI H1 32 / H2 28 / H3 24 / H4 20. Bottom stays 6. Overrides the universal
-   3/3 from editor-chrome.css via --block-pad-top so the side-menu grip
+   UI H1 32 / H2 28 / H3 24 / H4 20. Bottom is 8 (Notion's 6px outer + that
+   same 2px leaf), symmetric with how the top totals fold the leaf in.
+   Overrides the universal 3/3 from editor-chrome.css via --block-pad-top so
+   the side-menu grip
    widget stays aligned (it reads --block-pad-top via CSS cascade per the gutter contract). One block matches exactly one level, so the four
    per-level rules never conflict. */
 .rune-editor :is(.ProseMirror, .rune-column) > .rune-block:not(.rune-toggle):has(> .rune-block-content > :is(h2, h3, h4, h5)) {
   padding-top: var(--block-pad-top);
-  padding-bottom: 6px;
+  padding-bottom: 8px;
 }
 .rune-editor :is(.ProseMirror, .rune-column) > .rune-block:not(.rune-toggle):has(> .rune-block-content > h2) {
   --block-pad-top: 32px;

@@ -74,7 +74,11 @@
   --rune-text-selection-bg: color-mix(in oklab, var(--editor-accent) 28%, transparent);
   --rune-indicator-bg: color-mix(in oklab, var(--editor-accent) 42%, transparent);
   --rune-marquee-fill: var(--rune-block-selected-bg);
-  --rune-divider-color: color-mix(in oklab, var(--rune-editor-fg) 12%, transparent);
+  /* 9% ≈ Notion's --ca-borPriTra (its divider/border is rgba(55,53,47,.09)
+     in light, ~.094 white in dark). We derive from the editor fg (neutral,
+     no warm tint) so the alpha is the only knob — matched as close as one
+     value allows across both modes. */
+  --rune-divider-color: color-mix(in oklab, var(--rune-editor-fg) 9%, transparent);
   --rune-list-indent: 1.5em;
   --rune-list-gap: 0.4em;
   /* To-do checkbox border (unchecked). Notion paints its empty checkbox
