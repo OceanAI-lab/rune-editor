@@ -4,6 +4,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+// markdown-it-task-lists ships no types. The ambient declaration lives in a
+// sibling .d.ts; this reference pulls it into ANY program that compiles this
+// file via import resolution (e.g. the playground, whose `include` globs only
+// its own src and so would otherwise miss core's loose ambient declarations).
+/// <reference path="./markdown-it-task-lists.d.ts" />
 import MarkdownIt from "markdown-it"
 import taskLists from "markdown-it-task-lists"
 

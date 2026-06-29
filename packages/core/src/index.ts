@@ -392,8 +392,8 @@ export type {
 export { MultiBlockSelection } from "./extensions/block-selection/MultiBlockSelection"
 export { setMarqueeZone } from "./extensions/block-selection/marquee"
 
-export { Clipboard, collectKnownBlockTags } from "./extensions/clipboard"
-export type { ClipboardOptions } from "./extensions/clipboard"
+export { Clipboard, collectKnownBlockTags, markdownToDoc, markdownToHtml } from "./extensions/clipboard"
+export type { ClipboardOptions, ParseHTML } from "./extensions/clipboard"
 export { clipboardPluginKey } from "./extensions/clipboard/plugin"
 export { serializeBlocksForClipboard } from "./extensions/clipboard/serializeBlocks"
 

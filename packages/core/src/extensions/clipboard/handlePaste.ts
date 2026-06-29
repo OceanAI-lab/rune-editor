@@ -10,7 +10,9 @@ import { Slice, DOMParser as PMDOMParser } from "@tiptap/pm/model"
 import { isInTable } from "@tiptap/pm/tables"
 import { isMarkdown } from "./isMarkdown"
 import { markdownToHtml } from "./markdownToHtml"
-import { transformPastedHTML } from "./transformPastedHTML"
+import { collectKnownBlockTags } from "./knownBlockTags"
+import { transformPastedHTMLDoc } from "./transformPastedHTML"
+import { transformPastedImageHTML } from "../../blocks/Image/transformPastedImageHTML"
 
 /**
  * Tiptap/PM `handlePaste` prop. Inspects clipboardData MIMEs and
@@ -73,8 +75,12 @@ export function handlePaste(view: EditorView, event: ClipboardEvent, editor: Edi
   ) {
     const text = data.getData("text/plain")
     if (text && isMarkdown(text)) {
-      const html = transformPastedHTML(markdownToHtml(text), view, editor)
-      const dom = new DOMParser().parseFromString(html, "text/html")
+      // Same schema-only transform core as the headless `markdownToDoc`
+      // import path, plus the live-view image step (paste can upload).
+      const dom = new DOMParser().parseFromString(markdownToHtml(text), "text/html")
+      transformPastedHTMLDoc(dom, collectKnownBlockTags(view.state.schema), (d) =>
+        transformPastedImageHTML(d, view, editor),
+      )
       const slice = PMDOMParser.fromSchema(view.state.schema).parseSlice(dom.body, {
         preserveWhitespace: true,
       })

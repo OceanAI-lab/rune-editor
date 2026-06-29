@@ -24,4 +24,7 @@ export const Clipboard = Extension.create<ClipboardOptions>({
 
 export { collectKnownBlockTags } from "./knownBlockTags"
 export { serializeBlocksForClipboard } from "./serializeBlocks"
+export { markdownToDoc } from "./markdownToDoc"
+export type { ParseHTML } from "./markdownToDoc"
+export { markdownToHtml } from "./markdownToHtml"
 export type { ClipboardOptions } from "./plugin"

@@ -26,16 +26,21 @@ function flattenLists(doc: Document) {
 }
 
 function walkList(list: Element, depth: number, out: HTMLLIElement[]) {
-  const isOL = list instanceof HTMLOListElement
+  // Tag/nodeType checks instead of `instanceof HTML*Element` so the
+  // transform stays DOM-implementation-agnostic — the headless
+  // `markdownToDoc` path may run against an injected Document (linkedom,
+  // jsdom) whose element classes are NOT the page's global constructors.
+  const isOL = list.tagName === "OL"
   const startAttr = isOL ? list.getAttribute("start") : null
   let firstNumberedSeen = false
 
-  for (const li of Array.from(list.children)) {
-    if (!(li instanceof HTMLLIElement)) continue
+  for (const child of Array.from(list.children)) {
+    if (child.tagName !== "LI") continue
+    const li = child as HTMLLIElement
 
     const checkbox = Array.from(li.children).find(
-      (child): child is HTMLInputElement =>
-        child instanceof HTMLInputElement && child.matches("input[type='checkbox']"),
+      (c): c is HTMLInputElement =>
+        c.tagName === "INPUT" && c.matches("input[type='checkbox']"),
     )
     const kind: ListKind = checkbox != null ? "task" : isOL ? "numbered" : "bullet"
     const nestedLists = Array.from(li.children).filter(
@@ -86,13 +91,34 @@ function wrapForParse(doc: Document, li: HTMLLIElement): HTMLElement {
  * DOMParser matches them against schema mark rules.
  */
 export function transformPastedHTML(html: string, view: EditorView, editor: Editor): string {
-  const knownBlockTags = collectKnownBlockTags(view.state.schema)
   const doc = new DOMParser().parseFromString(html, "text/html")
+  transformPastedHTMLDoc(doc, collectKnownBlockTags(view.state.schema), (d) =>
+    transformPastedImageHTML(d, view, editor),
+  )
+  return doc.body.innerHTML
+}
 
+/**
+ * Schema-only core of the paste transform, mutating `doc` in place. Runs
+ * every preprocessing step that depends solely on the schema (toggle
+ * flatten, inline-code rewrite, list flatten, unknown-block degrade), so
+ * it stays usable WITHOUT a live EditorView — this is what the headless
+ * `markdownToDoc` import path calls.
+ *
+ * `transformImages` is the one step that needs a live view + editor
+ * (image upload routing + Notion image-wrapper rewrite). The paste path
+ * passes it; headless callers omit it, leaving bare `<img src>` for PM's
+ * DOMParser to map to image blocks with their original URLs.
+ */
+export function transformPastedHTMLDoc(
+  doc: Document,
+  knownBlockTags: Set<string>,
+  transformImages?: (doc: Document) => void,
+): void {
   transformToggleHTML(doc)
   transformInlineCodeHTML(doc)
   flattenLists(doc)
-  transformPastedImageHTML(doc, view, editor)
+  transformImages?.(doc)
 
   for (const el of Array.from(doc.body.children)) {
     const unwrapped = unwrapFlattenedListWrapperChildren(el, knownBlockTags)
@@ -117,7 +143,6 @@ export function transformPastedHTML(html: string, view: EditorView, editor: Edit
     }
     el.replaceWith(...degradeToParagraphs(el, knownBlockTags))
   }
-  return doc.body.innerHTML
 }
 
 /**
@@ -174,8 +199,11 @@ function unwrapFlattenedListWrapperChildren(el: Element, knownBlockTags: Set<str
   const replacements: Element[] = []
   let sawFlattenedList = false
 
+  // nodeType literals (TEXT_NODE = 3, ELEMENT_NODE = 1) instead of
+  // `instanceof Text`/`Element` — see walkList: keeps the transform usable
+  // against an injected DOM whose Text/Element aren't the global classes.
   for (const node of Array.from(el.childNodes)) {
-    if (node instanceof Text) {
+    if (node.nodeType === 3) {
       if (node.textContent?.replace(/\s/g, "") === "") continue
       const p = el.ownerDocument.createElement("p")
       p.textContent = node.textContent
@@ -183,20 +211,21 @@ function unwrapFlattenedListWrapperChildren(el: Element, knownBlockTags: Set<str
       continue
     }
 
-    if (!(node instanceof Element)) continue
+    if (node.nodeType !== 1) continue
+    const elNode = node as Element
 
-    if (isFlattenedListWrapper(node)) {
-      replacements.push(node)
+    if (isFlattenedListWrapper(elNode)) {
+      replacements.push(elNode)
       sawFlattenedList = true
       continue
     }
 
-    if (knownBlockTags.has(node.tagName.toLowerCase())) {
-      replacements.push(node)
+    if (knownBlockTags.has(elNode.tagName.toLowerCase())) {
+      replacements.push(elNode)
       continue
     }
 
-    replacements.push(...degradeToParagraphs(node, knownBlockTags))
+    replacements.push(...degradeToParagraphs(elNode, knownBlockTags))
   }
 
   return sawFlattenedList ? replacements : null
