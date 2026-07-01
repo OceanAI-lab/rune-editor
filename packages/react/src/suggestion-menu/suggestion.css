@@ -90,3 +90,53 @@
 .rune-muted-scrollbar *::-webkit-scrollbar-thumb:hover {
   background: color-mix(in oklab, var(--muted-foreground) 60%, transparent);
 }
+
+/* Emoji grid scroller — NATIVE scrollbar, styled. We don't draw a custom
+   thumb: a native bar drags perfectly 1:1 with the cursor (no JS / React
+   round-trip) and is a fraction of the code. The two things that made the
+   native bar look wrong before are fixed here in pure CSS:
+     • white edge   → the white came from the DEFAULT track, not the bar;
+       `::-webkit-scrollbar-track { background: transparent }` removes it.
+     • lopsided gutter → `scrollbar-gutter: stable` reserves the bar's lane at
+       ALL times (so the list doesn't jump when it starts/stops overflowing),
+       and the matching left padding on the element (`pl-2`, no right padding)
+       keeps the left/right insets equal.
+   The thumb is a thin muted pill — a transparent border + `background-clip:
+   padding-box` slims the visible pill inside the 8px lane. Truly *floating*
+   the bar with zero reserved width isn't possible with native CSS in Chromium
+   (that needs a JS overlay); this trades a thin reserved lane for native feel. */
+.rune-emoji-grid-scroller {
+  /* `scrollbar-gutter: stable` reserves the bar's lane at the WEBKIT width
+     below (8px) so the `pl-2` (8px) left pad balances it. NB: do NOT set the
+     standard `scrollbar-width` here — once present, Chromium switches to the
+     standard scrollbar (a wider ~11px lane) and ignores the `::-webkit-
+     scrollbar` width, breaking the symmetry. The standard props are scoped to
+     Firefox only (it has no `::-webkit-scrollbar`) in the @supports block. */
+  scrollbar-gutter: stable;
+}
+.rune-emoji-grid-scroller::-webkit-scrollbar {
+  width: 8px;
+}
+.rune-emoji-grid-scroller::-webkit-scrollbar-track {
+  background: transparent; /* kills the white edge */
+}
+.rune-emoji-grid-scroller::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--muted-foreground) 32%, transparent);
+  border-radius: 9999px;
+  border: 2px solid transparent; /* slim the visible pill to ~4px */
+  background-clip: padding-box;
+}
+.rune-emoji-grid-scroller::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--muted-foreground) 55%, transparent);
+  background-clip: padding-box;
+}
+/* Firefox (no `::-webkit-scrollbar`): use the standard properties. `thin`
+   reserves a slightly wider lane than 8px, but FF isn't a primary target and
+   the track stays transparent so there's still no white edge. */
+@supports not selector(::-webkit-scrollbar) {
+  .rune-emoji-grid-scroller {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent)
+      transparent;
+  }
+}

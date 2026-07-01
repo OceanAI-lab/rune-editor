@@ -63,8 +63,14 @@ function unwrapLoneImageParagraphs(doc: Document) {
  * a downstream migration concern (e.g. an Obsidian vault's `./attachments/…`
  * relative paths must be re-hosted by the importing app).
  *
- * The result is a `{ type: "doc", content: [...] }` object ready to feed
- * to `useEditor({ content })` / `editor.commands.setContent(...)`.
+ * The result is a `{ type: "doc", content: [...] }` object. For a NEW page,
+ * feed it whole to `useEditor({ content })` / `editor.commands.setContent(...)`.
+ * To import into an EXISTING page, take `.content` (the block array) and feed
+ * it to `editor.commands.insertContentAt(pos, content)` — e.g. append at the
+ * current page's end with `pos = editor.state.doc.content.size`. Do NOT route
+ * it through `editor.commands.insertBlocks`: that command takes
+ * `RuneBlockInput[]` (the structured authoring shape), not the PM JSON this
+ * returns.
  */
 export function markdownToDoc(
   markdown: string,
